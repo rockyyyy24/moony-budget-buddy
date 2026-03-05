@@ -26,7 +26,7 @@ const Index = () => {
   const budget = useBudget();
   const {
     state, addExpense, updateCategories, updateBudgetConfig, finishOnboarding,
-    earnReward, toggleAlarm, changeExpenseCategory, resetCurrentMonth,
+    earnReward, toggleAlarm, changeExpenseCategory, resetCurrentMonth, setStickerPlacements,
     currentMonthExpenses, totalSpent, todaySpent, effectiveDailyLimit,
     getCategorySpent, isOverMonthlyBudget, isOverDailyLimit, overBudgetCategories,
   } = budget;
@@ -151,10 +151,10 @@ const Index = () => {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={moonyImg} alt="Moony" className="w-10 h-10 rounded-full border-2 border-secondary object-cover" />
+            <img src={moonyImg} alt="Mooney" className="w-10 h-10 rounded-full border-2 border-secondary object-cover" />
             <div>
-              <h1 className="text-lg font-display text-foreground leading-tight">Moony Budget Buddy</h1>
-              <p className="text-xs text-muted-foreground">Smart Expense Tracker ✨</p>
+              <h1 className="text-lg font-display text-foreground leading-tight">Mooney</h1>
+              <p className="text-xs text-muted-foreground">The Money Manager ✨</p>
             </div>
           </div>
 
@@ -255,7 +255,7 @@ const Index = () => {
 
           {view === 'rewards' && (
             <motion.div key="rewards" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <RewardsPage rewards={state.rewards} greenDayStreak={state.greenDayStreak} />
+              <RewardsPage rewards={state.rewards} greenDayStreak={state.greenDayStreak} stickerPlacements={state.stickerPlacements} onUpdatePlacements={setStickerPlacements} />
             </motion.div>
           )}
         </AnimatePresence>

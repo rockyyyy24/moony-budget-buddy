@@ -1,4 +1,4 @@
-import { AppState, BudgetConfig, Category, Expense, Reward } from '@/types/budget';
+import { AppState, BudgetConfig, Category, Expense, Reward, StickerPlacement } from '@/types/budget';
 
 const STORAGE_KEY = 'moony-budget-buddy';
 
@@ -15,6 +15,7 @@ const getDefaultState = (): AppState => ({
   rewards: [],
   fisheAlarmMuted: false,
   greenDayStreak: 0,
+  stickerPlacements: [],
 });
 
 export const loadState = (): AppState => {
@@ -91,6 +92,12 @@ export const resetMonth = (state: AppState): AppState => {
     expenses: [],
     budgetConfig: { ...state.budgetConfig, month: now.getMonth(), year: now.getFullYear() },
   };
+  saveState(newState);
+  return newState;
+};
+
+export const updateStickerPlacements = (state: AppState, placements: StickerPlacement[]): AppState => {
+  const newState = { ...state, stickerPlacements: placements };
   saveState(newState);
   return newState;
 };

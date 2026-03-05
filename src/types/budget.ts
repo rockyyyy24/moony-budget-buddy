@@ -33,6 +33,14 @@ export interface Reward {
   year: number;
 }
 
+export interface StickerPlacement {
+  stickerId: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  rotation: number; // degrees
+  scale: number;
+}
+
 export interface AppState {
   isOnboarded: boolean;
   categories: Category[];
@@ -41,6 +49,7 @@ export interface AppState {
   rewards: Reward[];
   fisheAlarmMuted: boolean;
   greenDayStreak: number;
+  stickerPlacements: StickerPlacement[];
 }
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'monthlyLimit'>[] = [

@@ -35,7 +35,7 @@ const FisheAlarm = ({ warnings, muted, onToggleMute }: FisheAlarmProps) => {
       <div className="relative inline-flex items-center gap-2">
         <motion.img
           src={fisheImg}
-          alt="Fishe the Financer"
+          alt="Fishie the Financer"
           className={`w-12 h-12 rounded-full border-2 object-cover ${
             warnings.length > 0 ? 'border-destructive' : 'border-border'
           }`}
@@ -62,13 +62,13 @@ const FisheAlarm = ({ warnings, muted, onToggleMute }: FisheAlarmProps) => {
               <div className="flex items-start gap-3">
                 <motion.img
                   src={fisheImg}
-                  alt="Fishe"
+                  alt="Fishie"
                   className="w-12 h-12 rounded-full object-cover shrink-0"
                   animate={{ x: [-2, 2, -2, 2, 0] }}
                   transition={{ duration: 0.3, repeat: 3 }}
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-foreground mb-1">🚨 Fishe Alert!</p>
+                  <p className="text-sm font-semibold text-foreground mb-1">🚨 Fishie Alert!</p>
                   <p className="text-sm text-foreground">{currentWarning}</p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -79,7 +79,7 @@ const FisheAlarm = ({ warnings, muted, onToggleMute }: FisheAlarmProps) => {
               </div>
               <div className="flex justify-end mt-2">
                 <Button variant="ghost" size="sm" onClick={onToggleMute} className="text-xs gap-1 text-muted-foreground">
-                  <VolumeX className="w-3 h-3" /> Mute alerts
+                  <VolumeX className="w-3 h-3" /> Mute Fishie
                 </Button>
               </div>
             </div>
@@ -90,7 +90,7 @@ const FisheAlarm = ({ warnings, muted, onToggleMute }: FisheAlarmProps) => {
       {/* Unmute button when muted */}
       {muted && warnings.length > 0 && (
         <Button variant="ghost" size="sm" onClick={onToggleMute} className="text-xs gap-1 text-muted-foreground">
-          <Volume2 className="w-3 h-3" /> Unmute Fishe
+          <Volume2 className="w-3 h-3" /> Unmute Fishie
         </Button>
       )}
     </>

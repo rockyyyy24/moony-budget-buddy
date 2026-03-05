@@ -23,7 +23,7 @@ const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit }: Bu
         <div className="retro-dot bg-warning" />
         <div className="retro-dot bg-success" />
         <span className="ml-2 text-sm font-semibold text-foreground font-display">💰 Budget Overview</span>
-        <img src={fisheImg} alt="Fishe" className="w-6 h-6 rounded-full object-cover ml-auto border border-border" />
+        <img src={fisheImg} alt="Fishie" className="w-6 h-6 rounded-full object-cover ml-auto border border-border" />
       </div>
 
       <div className="p-4 space-y-3">
