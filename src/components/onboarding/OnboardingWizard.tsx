@@ -124,7 +124,7 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
 
       {missing.length > 0 && (
         <div className="kawaii-card bg-secondary/30 border-secondary">
-          <p className="text-sm font-semibold text-foreground mb-1">💡 Moony suggests adding:</p>
+          <p className="text-sm font-semibold text-foreground mb-1">💡 Mooney suggests adding:</p>
           <p className="text-sm text-muted-foreground">{missing.join(', ')}</p>
         </div>
       )}
@@ -199,17 +199,17 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           <div className="retro-dot bg-warning" />
           <div className="retro-dot bg-success" />
           <span className="ml-2 text-sm font-semibold text-foreground font-display">
-            Moony Budget Buddy ✨ Setup
+            Mooney ✨ Setup
           </span>
         </div>
 
         <div className="p-6">
           {/* Moony greeting */}
           <div className="flex items-center gap-3 mb-6">
-            <img src={moonyImg} alt="Moony" className="w-16 h-16 rounded-full border-2 border-secondary object-cover" />
+            <img src={moonyImg} alt="Mooney" className="w-16 h-16 rounded-full border-2 border-secondary object-cover" />
             <div className="kawaii-card bg-secondary/30 border-secondary flex-1 py-2 px-3">
               <p className="text-sm text-foreground">
-                {step === 0 && "Hey there! 🦆 I'm Moony! Let's set up your budget together!"}
+                {step === 0 && "Hey there! 🦆 I'm Mooney! Let's set up your budget together!"}
                 {step === 1 && "Great picks! 🎉 Now let's talk numbers — how much can we work with?"}
                 {step === 2 && "Almost done! 🌟 Set limits per category or skip this step!"}
               </p>

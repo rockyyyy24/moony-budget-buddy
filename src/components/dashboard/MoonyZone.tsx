@@ -17,7 +17,7 @@ const MoonyZone = ({ onClick, message }: MoonyZoneProps) => {
       <div className="relative">
         <motion.img
           src={moonyImg}
-          alt="Moony the duck"
+          alt="Mooney the money manager"
           className="w-16 h-16 rounded-full border-2 border-secondary object-cover shadow-lg"
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -26,7 +26,7 @@ const MoonyZone = ({ onClick, message }: MoonyZoneProps) => {
         {/* Speech bubble */}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           <div className="kawaii-card bg-card px-3 py-2 text-xs whitespace-nowrap text-foreground font-medium">
-            {message || "Click me to chat! 🦆"}
+            {message || "Click me to chat! 🦆💰"}
           </div>
         </div>
 

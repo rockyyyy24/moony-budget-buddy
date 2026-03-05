@@ -65,7 +65,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd }: ChatBoxProps) => {
         <div className="retro-dot bg-destructive" />
         <div className="retro-dot bg-warning" />
         <div className="retro-dot bg-success" />
-        <span className="ml-2 text-sm font-semibold text-foreground font-display">💬 Chat with Moony</span>
+        <span className="ml-2 text-sm font-semibold text-foreground font-display">💬 Chat with Mooney</span>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
@@ -78,7 +78,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd }: ChatBoxProps) => {
               className={`flex gap-2 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}
             >
               {msg.sender === 'moony' && (
-                <img src={moonyImg} alt="Moony" className="w-8 h-8 rounded-full border border-secondary object-cover shrink-0 mt-1" />
+                <img src={moonyImg} alt="Mooney" className="w-8 h-8 rounded-full border border-secondary object-cover shrink-0 mt-1" />
               )}
               <div
                 className={`rounded-2xl px-4 py-2 max-w-[80%] text-sm ${

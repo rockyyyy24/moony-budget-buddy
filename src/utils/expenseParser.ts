@@ -90,16 +90,16 @@ export const getFisheWarning = (type: 'monthly' | 'category' | 'daily', name?: s
     monthly: [
       "Oiii! You're crossing the monthly budget! 🚨🐟 Time to slow down!",
       "ALERT! 🐟 Monthly budget breached! Let's reel it in!",
-      "🚨 Fishe says: Monthly budget exceeded! Swim back to safe waters!",
+      "🚨 Fishie says: Monthly budget exceeded! Swim back to safe waters!",
     ],
     category: [
       `Oiii! ${name || 'This category'} is over budget! 🚨🐟 Watch out!`,
       `🐟 ALERT: ${name || 'Category'} limit crossed! Time to cut back!`,
-      `Fishe is NOT happy! 🐟🚨 ${name || 'Category'} budget busted!`,
+      `Fishie is NOT happy! 🐟🚨 ${name || 'Category'} budget busted!`,
     ],
     daily: [
       "Oiii! You've spent too much today! 🚨🐟 Take a break!",
-      "🐟 Daily limit crossed! Fishe is watching! 🚨",
+      "🐟 Daily limit crossed! Fishie is watching! 🚨",
       "Too much spending today! 🚨🐟 Save some for tomorrow!",
     ],
   };

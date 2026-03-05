@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { AppState, Category, Expense, BudgetConfig, Reward } from '@/types/budget';
+import { AppState, Category, Expense, BudgetConfig, Reward, StickerPlacement } from '@/types/budget';
 import {
   loadState, saveState, addExpense as addExp, updateCategories as updateCats,
   updateBudget as updateBudg, completeOnboarding as completeOnb,
   addReward as addRew, toggleFisheAlarm as toggleFishe,
   deleteExpense as delExp, updateExpenseCategory as updateExpCat,
-  resetMonth as resetMo,
+  resetMonth as resetMo, updateStickerPlacements as updateStickers,
 } from '@/utils/storage';
 
 export const useBudget = () => {
@@ -47,6 +47,10 @@ export const useBudget = () => {
 
   const resetCurrentMonth = useCallback(() => {
     setState(prev => resetMo(prev));
+  }, []);
+
+  const setStickerPlacements = useCallback((placements: StickerPlacement[]) => {
+    setState(prev => updateStickers(prev, placements));
   }, []);
 
   const setFullState = useCallback((newState: AppState) => {
@@ -99,6 +103,7 @@ export const useBudget = () => {
     removeExpense,
     changeExpenseCategory,
     resetCurrentMonth,
+    setStickerPlacements,
     setFullState,
     currentMonthExpenses,
     totalSpent,
