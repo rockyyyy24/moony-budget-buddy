@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { playAlarmSound } from '@/utils/sounds';
+import { playAlarmSound, unlockAudio } from '@/utils/sounds';
 import { Button } from '@/components/ui/button';
 import { useBudget } from '@/hooks/useBudget';
 import { Expense, Reward } from '@/types/budget';
@@ -146,7 +146,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background sparkle-bg">
+    <div className="min-h-screen bg-background sparkle-bg" onClick={unlockAudio} onTouchStart={unlockAudio}>
       {/* Header */}
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
