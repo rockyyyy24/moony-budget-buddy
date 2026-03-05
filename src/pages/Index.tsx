@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { playAlarmSound } from '@/utils/sounds';
 import { Button } from '@/components/ui/button';
 import { useBudget } from '@/hooks/useBudget';
 import { Expense, Reward } from '@/types/budget';
@@ -54,6 +56,34 @@ const Index = () => {
   if (isOverMonthlyBudget) fisheWarnings.push(getFisheWarning('monthly'));
   if (isOverDailyLimit) fisheWarnings.push(getFisheWarning('daily'));
   overBudgetCategories.forEach(c => fisheWarnings.push(getFisheWarning('category', c.name)));
+
+  // Track previous over-budget state for edge detection
+  const prevOverDaily = useRef(isOverDailyLimit);
+  const prevOverMonthly = useRef(isOverMonthlyBudget);
+  const prevTodaySpent = useRef(todaySpent);
+
+  useEffect(() => {
+    // Alarm: just crossed daily or monthly limit
+    if ((isOverDailyLimit && !prevOverDaily.current) || (isOverMonthlyBudget && !prevOverMonthly.current)) {
+      if (!state.fisheAlarmMuted) {
+        playAlarmSound(4000);
+      }
+    }
+
+    // Confetti: added an expense and still within daily limit
+    if (todaySpent > prevTodaySpent.current && !isOverDailyLimit && todaySpent > 0) {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#d4a0e8', '#f5b8d0', '#fcd5a0', '#a8e6cf', '#87ceeb'],
+      });
+    }
+
+    prevOverDaily.current = isOverDailyLimit;
+    prevOverMonthly.current = isOverMonthlyBudget;
+    prevTodaySpent.current = todaySpent;
+  }, [todaySpent, isOverDailyLimit, isOverMonthlyBudget, state.fisheAlarmMuted]);
 
   const handleSendExpense = useCallback((text: string): string => {
     const parsed = parseExpenseText(text, state.categories);
