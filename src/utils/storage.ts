@@ -11,11 +11,13 @@ const getDefaultState = (): AppState => ({
     dailyLimit: 0,
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
+    currency: 'INR',
   },
   rewards: [],
   fisheAlarmMuted: false,
   greenDayStreak: 0,
   stickerPlacements: [],
+  hasSeenGuide: false,
 });
 
 export const loadState = (): AppState => {

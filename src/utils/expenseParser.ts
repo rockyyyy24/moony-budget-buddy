@@ -74,13 +74,13 @@ export const parseExpenseText = (text: string, categories: Category[]): ParsedEx
   return { amount, categoryId, note: finalNote, confidence };
 };
 
-export const getMoonyResponse = (amount: number, categoryName: string, note: string): string => {
+export const getMoonyResponse = (amount: number, categoryName: string, note: string, currencySymbol: string = '₹'): string => {
   const responses = [
-    `Got it! 🦆 Logged ₹${amount} for ${categoryName}${note ? ` (${note})` : ''}. Keep tracking! ✨`,
-    `Quack! 🦆 ₹${amount} on ${categoryName}${note ? ` — ${note}` : ''}. I'm watching your wallet! 👀`,
-    `Noted! ₹${amount} → ${categoryName} 📝${note ? ` "${note}"` : ''} You're doing great! 🌟`,
-    `₹${amount} for ${categoryName}${note ? ` (${note})` : ''} — saved! 🦆💰 Stay awesome!`,
-    `Quack quack! ₹${amount} on ${categoryName}${note ? ` — ${note}` : ''}. I've got your back! 🎉`,
+    `Got it! 🦆 Logged ${currencySymbol}${amount} for ${categoryName}${note ? ` (${note})` : ''}. Keep tracking! ✨`,
+    `Quack! 🦆 ${currencySymbol}${amount} on ${categoryName}${note ? ` — ${note}` : ''}. I'm watching your wallet! 👀`,
+    `Noted! ${currencySymbol}${amount} → ${categoryName} 📝${note ? ` "${note}"` : ''} You're doing great! 🌟`,
+    `${currencySymbol}${amount} for ${categoryName}${note ? ` (${note})` : ''} — saved! 🦆💰 Stay awesome!`,
+    `Quack quack! ${currencySymbol}${amount} on ${categoryName}${note ? ` — ${note}` : ''}. I've got your back! 🎉`,
   ];
   return responses[Math.floor(Math.random() * responses.length)];
 };

@@ -9,9 +9,10 @@ interface BudgetSummaryProps {
   dailyLimit: number;
   categories: Category[];
   getCategorySpent: (id: string) => number;
+  currencySymbol: string;
 }
 
-const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit }: BudgetSummaryProps) => {
+const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit, currencySymbol }: BudgetSummaryProps) => {
   const remaining = monthlyBudget - totalSpent;
   const percentage = monthlyBudget > 0 ? Math.min((totalSpent / monthlyBudget) * 100, 100) : 0;
   const isOver = remaining < 0;
@@ -29,7 +30,7 @@ const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit }: Bu
       <div className="p-4 space-y-3">
         <div className="text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Monthly Budget</p>
-          <p className="text-2xl font-display text-foreground">₹{monthlyBudget.toLocaleString()}</p>
+          <p className="text-2xl font-display text-foreground">{currencySymbol}{monthlyBudget.toLocaleString()}</p>
         </div>
 
         <div className="h-3 rounded-full bg-muted overflow-hidden">
@@ -45,13 +46,13 @@ const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit }: Bu
           <div className="text-center kawaii-card bg-background py-2">
             <p className="text-xs text-muted-foreground">Spent</p>
             <p className={`text-lg font-bold ${isOver ? 'text-destructive' : 'text-foreground'}`}>
-              ₹{totalSpent.toLocaleString()}
+              {currencySymbol}{totalSpent.toLocaleString()}
             </p>
           </div>
           <div className="text-center kawaii-card bg-background py-2">
             <p className="text-xs text-muted-foreground">Remaining</p>
             <p className={`text-lg font-bold ${isOver ? 'text-destructive' : 'text-success'}`}>
-              {isOver ? '-' : ''}₹{Math.abs(remaining).toLocaleString()}
+              {isOver ? '-' : ''}{currencySymbol}{Math.abs(remaining).toLocaleString()}
             </p>
           </div>
         </div>
@@ -59,8 +60,8 @@ const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit }: Bu
         <div className="kawaii-card bg-background py-2 text-center">
           <p className="text-xs text-muted-foreground">Today's Spending</p>
           <p className={`text-lg font-bold ${todaySpent > dailyLimit && dailyLimit > 0 ? 'text-destructive' : 'text-foreground'}`}>
-            ₹{todaySpent.toLocaleString()}
-            <span className="text-xs font-normal text-muted-foreground"> / ₹{Math.round(dailyLimit).toLocaleString()}</span>
+            {currencySymbol}{todaySpent.toLocaleString()}
+            <span className="text-xs font-normal text-muted-foreground"> / {currencySymbol}{Math.round(dailyLimit).toLocaleString()}</span>
           </p>
         </div>
       </div>
