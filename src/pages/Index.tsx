@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X } from 'lucide-react';
+import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { playAlarmSound, unlockAudio } from '@/utils/sounds';
 import { Button } from '@/components/ui/button';
 import { useBudget } from '@/hooks/useBudget';
@@ -24,6 +26,8 @@ import moonyImg from '@/assets/moony.png';
 type View = 'dashboard' | 'calendar' | 'report' | 'rewards';
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { session, loading: authLoading, signOut } = useAuth();
   const budget = useBudget();
   const {
     state, addExpense, updateCategories, updateBudgetConfig, finishOnboarding,
@@ -38,6 +42,10 @@ const Index = () => {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [editBudgetOpen, setEditBudgetOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !session) navigate('/auth', { replace: true });
+  }, [authLoading, session, navigate]);
 
   // Show welcome guide on first dashboard visit
   useEffect(() => {
@@ -109,6 +117,10 @@ const Index = () => {
     updateBudgetConfig({ monthlyBudget: monthly, dailyLimit: daily, month: new Date().getMonth(), year: new Date().getFullYear(), currency: state.budgetConfig.currency });
   }, [updateCategories, updateBudgetConfig, state.budgetConfig.currency]);
 
+  if (authLoading || !session) {
+    return <div className="min-h-screen flex items-center justify-center bg-background">Loading...</div>;
+  }
+
   if (!state.isOnboarded) {
     return (
       <OnboardingWizard
@@ -154,6 +166,9 @@ const Index = () => {
             <FisheAlarm warnings={fisheWarnings} muted={state.fisheAlarmMuted} onToggleMute={toggleAlarm} />
             <Button variant="ghost" size="icon" onClick={() => setEditBudgetOpen(true)}>
               <Settings className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>

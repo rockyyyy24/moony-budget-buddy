@@ -83,6 +83,19 @@ const BYE_RESPONSES = [
   "Later friend! 💕 Your wallet says thanks!",
 ];
 
+const COMPLIMENT_KEYWORDS = ['love you', 'you\'re the best', 'youre the best', 'you rock', 'awesome', 'amazing', 'great job', 'good job', 'nice mooney', 'love mooney'];
+const COMPLIMENT_RESPONSES = [
+  "Awwww stop it! 🦆💕 You're making me blush quack-quack!",
+  "You're the bestest! 🌟 We make a great team bestie!",
+  "🦆✨ I love you tooooo! Now let's crush this budget!",
+];
+
+const SUMMARY_KEYWORDS = ['summary', 'recap', 'today summary', 'daily summary', 'wrap up', 'how was today', 'today\'s spending'];
+const STREAK_KEYWORDS = ['streak', 'green day', 'green days', 'how many days'];
+const CATEGORY_QUERY_KEYWORDS = ['how much on', 'how much for', 'spent on', 'spending on', 'what about', 'category'];
+
+const randomPickIdx = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
 const randomPick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
 const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyLimit, totalSpent, monthlyBudget, categories, getCategorySpent }: ChatBoxProps) => {
@@ -106,11 +119,50 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
 
     if (GREETINGS.some(g => lower === g || lower.startsWith(g + ' ') || lower.startsWith(g + '!'))) return randomPick(GREETING_RESPONSES);
     if (HOW_ARE_YOU.some(h => lower.includes(h))) return randomPick(HOW_RESPONSES);
+    if (COMPLIMENT_KEYWORDS.some(c => lower.includes(c))) return randomPick(COMPLIMENT_RESPONSES);
     if (THANKS.some(t => lower.includes(t))) return randomPick(THANKS_RESPONSES);
     if (HELP_KEYWORDS.some(h => lower.includes(h))) return HELP_RESPONSE;
     if (BYE_KEYWORDS.some(b => lower === b || lower.startsWith(b + ' '))) return randomPick(BYE_RESPONSES);
     if (JOKE_KEYWORDS.some(j => lower.includes(j))) return randomPick(JOKES);
     if (MOOD_SAD.some(m => lower.includes(m))) return randomPick(MOOD_RESPONSES);
+
+    // Streak compliment
+    if (STREAK_KEYWORDS.some(k => lower.includes(k))) {
+      const dailyRemaining = dailyLimit - todaySpent;
+      if (dailyRemaining >= 0) {
+        return `🔥 You're on a roll bestie! Today you're ${currencySymbol}${Math.round(dailyRemaining).toLocaleString()} UNDER your daily limit! That's the kind of energy I love! 🦆⭐ Keep stacking green days!`;
+      }
+      return `Hey, today went a lil over by ${currencySymbol}${Math.abs(Math.round(dailyRemaining)).toLocaleString()}, but tomorrow's a fresh start! 🌅 Let's get that streak going! 💪`;
+    }
+
+    // Daily summary
+    if (SUMMARY_KEYWORDS.some(k => lower.includes(k))) {
+      const dailyRemaining = dailyLimit - todaySpent;
+      const topToday = categories
+        .map(c => ({ c, spent: getCategorySpent(c.id) }))
+        .filter(x => x.spent > 0)
+        .sort((a, b) => b.spent - a.spent)[0];
+      const topLine = topToday ? `Top category this month: ${topToday.c.icon} ${topToday.c.name} (${currencySymbol}${topToday.spent.toLocaleString()})` : "No expenses logged this month yet!";
+      const verdict = dailyRemaining >= 0
+        ? `🟢 Today: ${currencySymbol}${todaySpent.toLocaleString()} spent, ${currencySymbol}${Math.round(dailyRemaining).toLocaleString()} left. You're doing AMAZING! 🌟`
+        : `🔴 Today: ${currencySymbol}${todaySpent.toLocaleString()} spent, over by ${currencySymbol}${Math.abs(Math.round(dailyRemaining)).toLocaleString()}. No biggie, tomorrow we lock in! 💪`;
+      return `📋 Daily Recap:\n\n${verdict}\n\n${topLine}\n\nKeep at it bestie! 🦆💕`;
+    }
+
+    // Category-specific query: "how much on food" / "spent on travel"
+    const matchedCat = categories.find(c => lower.includes(c.name.toLowerCase()));
+    if (matchedCat && (CATEGORY_QUERY_KEYWORDS.some(k => lower.includes(k)) || /how much|status|budget/.test(lower))) {
+      const spent = getCategorySpent(matchedCat.id);
+      const limit = matchedCat.monthlyLimit;
+      const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+      if (limit > 0) {
+        const left = limit - spent;
+        return left >= 0
+          ? `${matchedCat.icon} ${matchedCat.name}: ${currencySymbol}${spent.toLocaleString()} / ${currencySymbol}${limit.toLocaleString()} (${pct}%)\n\n${pct < 50 ? "You're crushing it! 🌟" : pct < 90 ? "Going steady bestie! 👀" : "Watch out, almost at the limit! ⚠️"}`
+          : `${matchedCat.icon} ${matchedCat.name}: ${currencySymbol}${spent.toLocaleString()} / ${currencySymbol}${limit.toLocaleString()}\n\n🚨 Over by ${currencySymbol}${Math.abs(left).toLocaleString()}! Time to ease up here bestie 💪`;
+      }
+      return `${matchedCat.icon} ${matchedCat.name}: ${currencySymbol}${spent.toLocaleString()} spent this month (no limit set).`;
+    }
 
     if (TIP_KEYWORDS.some(t => lower.includes(t))) {
       const topCat = categories.reduce((best, cat) => {

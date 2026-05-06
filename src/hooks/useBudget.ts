@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AppState, Category, Expense, BudgetConfig, Reward, StickerPlacement } from '@/types/budget';
+import { useAuth } from '@/hooks/useAuth';
 import {
   loadState, saveState, addExpense as addExp, updateCategories as updateCats,
   updateBudget as updateBudg, completeOnboarding as completeOnb,
@@ -9,7 +10,13 @@ import {
 } from '@/utils/storage';
 
 export const useBudget = () => {
+  const { user } = useAuth();
   const [state, setState] = useState<AppState>(loadState);
+
+  // Reload state when user changes (login/logout)
+  useEffect(() => {
+    setState(loadState());
+  }, [user?.id]);
 
   useEffect(() => { saveState(state); }, [state]);
 
