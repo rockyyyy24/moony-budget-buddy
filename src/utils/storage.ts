@@ -1,6 +1,13 @@
 import { AppState, BudgetConfig, Category, Expense, Reward, StickerPlacement } from '@/types/budget';
 
-const STORAGE_KEY = 'moony-budget-buddy';
+const BASE_KEY = 'moony-budget-buddy';
+let currentUserId: string | null = null;
+
+export const setStorageUser = (userId: string | null) => {
+  currentUserId = userId;
+};
+
+const storageKey = () => currentUserId ? `${BASE_KEY}:${currentUserId}` : BASE_KEY;
 
 const getDefaultState = (): AppState => ({
   isOnboarded: false,
@@ -22,7 +29,7 @@ const getDefaultState = (): AppState => ({
 
 export const loadState = (): AppState => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return getDefaultState();
     return { ...getDefaultState(), ...JSON.parse(raw) };
   } catch {
@@ -31,7 +38,7 @@ export const loadState = (): AppState => {
 };
 
 export const saveState = (state: AppState): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(storageKey(), JSON.stringify(state));
 };
 
 export const addExpense = (state: AppState, expense: Expense): AppState => {
