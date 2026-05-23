@@ -102,7 +102,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
-      text: "Hey bestie! 🦆✨ I'm Mooney, your money manager! Type what you spent (like \"Pizza 250\") or just chat with me! Type \"help\" to see everything I can do!",
+      text: "Welcome back, bestie! I'm Mooney, your money manager! Type what you spent (like \"Pizza 250\") or just chat with me! Type \"help\" to see everything I can do!",
       sender: 'moony',
       timestamp: new Date(),
     },
