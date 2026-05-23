@@ -5,6 +5,7 @@ interface ParsedExpense {
   categoryId: string;
   note: string;
   confidence: number;
+  dateOffsetDays: number; // 0=today, -1=yesterday, etc.
 }
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
@@ -31,7 +32,44 @@ export const parseExpenseText = (text: string, categories: Category[]): ParsedEx
   if (amount <= 0 || isNaN(amount)) return null;
 
   // Remove amount from text to get the note
-  const noteText = lower.replace(amountMatch[0], '').trim();
+  let noteText = lower.replace(amountMatch[0], '').trim();
+
+  // Detect relative date words
+  let dateOffsetDays = 0;
+  const dayBefore = /\bday before yesterday\b|\bdbf\b/;
+  const yesterday = /\byesterday\b|\byday\b/;
+  const today = /\btoday\b|\btoday's\b/;
+  const nDaysAgo = /\b(\d{1,2})\s*days?\s*ago\b/;
+  const lastWeek = /\blast week\b/;
+  const weekdayMap: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+  };
+  const weekdayMatch = lower.match(/\b(?:last |on |this )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+
+  if (dayBefore.test(lower)) {
+    dateOffsetDays = -2;
+    noteText = noteText.replace(dayBefore, '').trim();
+  } else if (yesterday.test(lower)) {
+    dateOffsetDays = -1;
+    noteText = noteText.replace(yesterday, '').trim();
+  } else if (today.test(lower)) {
+    dateOffsetDays = 0;
+    noteText = noteText.replace(today, '').trim();
+  } else if (nDaysAgo.test(lower)) {
+    const m = lower.match(nDaysAgo)!;
+    dateOffsetDays = -Math.min(parseInt(m[1], 10), 365);
+    noteText = noteText.replace(nDaysAgo, '').trim();
+  } else if (lastWeek.test(lower)) {
+    dateOffsetDays = -7;
+    noteText = noteText.replace(lastWeek, '').trim();
+  } else if (weekdayMatch) {
+    const target = weekdayMap[weekdayMatch[1]];
+    const todayIdx = new Date().getDay();
+    let diff = todayIdx - target;
+    if (diff <= 0) diff += 7; // past occurrence
+    dateOffsetDays = -diff;
+    noteText = noteText.replace(weekdayMatch[0], '').trim();
+  }
 
   // Find category
   let bestMatch = '';
@@ -71,7 +109,7 @@ export const parseExpenseText = (text: string, categories: Category[]): ParsedEx
 
   const finalNote = cleanNote || text.replace(/\d+/g, '').trim();
 
-  return { amount, categoryId, note: finalNote, confidence };
+  return { amount, categoryId, note: finalNote, confidence, dateOffsetDays };
 };
 
 export const getMoonyResponse = (amount: number, categoryName: string, note: string, currencySymbol: string = '₹'): string => {

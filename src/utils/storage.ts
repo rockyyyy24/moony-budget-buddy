@@ -113,6 +113,10 @@ export const updateStickerPlacements = (state: AppState, placements: StickerPlac
   return newState;
 };
 
+export const resetUserData = (): void => {
+  localStorage.removeItem(storageKey());
+};
+
 export const exportData = (state: AppState): string => {
   return JSON.stringify(state, null, 2);
 };
