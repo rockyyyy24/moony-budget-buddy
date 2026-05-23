@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut } from 'lucide-react';
+import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut, Image as ImageIcon } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useBudget } from '@/hooks/useBudget';
 import { Expense, Reward, CURRENCIES } from '@/types/budget';
 import { parseExpenseText, getMoonyResponse, getFisheWarning } from '@/utils/expenseParser';
+import { resetUserData } from '@/utils/storage';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import CategoryCard from '@/components/dashboard/CategoryCard';
 import ChatBox from '@/components/dashboard/ChatBox';
@@ -18,13 +19,16 @@ import BudgetSummary from '@/components/dashboard/BudgetSummary';
 import CalendarView from '@/components/calendar/CalendarView';
 import MonthlySummary from '@/components/monthly/MonthlySummary';
 import RewardsPage from '@/components/rewards/RewardsPage';
+import BadgesWall from '@/components/rewards/BadgesWall';
 import QuickAddDialog from '@/components/dashboard/QuickAddDialog';
 import EditBudgetDialog from '@/components/dashboard/EditBudgetDialog';
 import WelcomeGuide from '@/components/dashboard/WelcomeGuide';
 import SpendingAnalytics from '@/components/dashboard/SpendingAnalytics';
+import LogoutDialog from '@/components/dashboard/LogoutDialog';
+import EndOfMonthDialog from '@/components/dashboard/EndOfMonthDialog';
 import moonyImg from '@/assets/moony.png';
 
-type View = 'dashboard' | 'calendar' | 'report' | 'rewards';
+type View = 'dashboard' | 'calendar' | 'report' | 'rewards' | 'wall';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -35,7 +39,7 @@ const Index = () => {
     earnReward, toggleAlarm, changeExpenseCategory, resetCurrentMonth, setStickerPlacements,
     currentMonthExpenses, totalSpent, yearSpent, todaySpent, effectiveDailyLimit,
     getCategorySpent, isOverMonthlyBudget, isOverDailyLimit, overBudgetCategories,
-    setFullState,
+    setFullState, daysInMonth,
   } = budget;
 
   const [view, setView] = useState<View>('dashboard');
@@ -43,6 +47,8 @@ const Index = () => {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [editBudgetOpen, setEditBudgetOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [eomOpen, setEomOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !session) navigate('/auth', { replace: true });
@@ -69,6 +75,33 @@ const Index = () => {
       });
     }
   }, [state.expenses.length, earnReward]);
+
+  // Award Green Goddess badge: full-month green streak
+  useEffect(() => {
+    if (state.greenDayStreak >= daysInMonth && daysInMonth > 0) {
+      earnReward({
+        id: 'green-goddess', name: 'Green Goddess', emoji: '🌿', description: 'Green streak for an entire month!',
+        earnedDate: new Date().toISOString(), month: new Date().getMonth(), year: new Date().getFullYear(),
+      });
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#a8e6cf', '#d4a0e8', '#fcd5a0'] });
+    }
+    if (currentMonthExpenses.length >= 30) {
+      earnReward({
+        id: 'mooney-vip', name: 'Mooney VIP', emoji: '👑', description: 'Tracked 30+ expenses in a month!',
+        earnedDate: new Date().toISOString(), month: new Date().getMonth(), year: new Date().getFullYear(),
+      });
+    }
+  }, [state.greenDayStreak, daysInMonth, currentMonthExpenses.length, earnReward]);
+
+  // End-of-month prompt: ask once per month on day 1-3
+  useEffect(() => {
+    if (!state.isOnboarded) return;
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (now.getDate() <= 3 && state.lastMonthPromptYM !== ym && state.expenses.length > 0) {
+      setEomOpen(true);
+    }
+  }, [state.isOnboarded, state.lastMonthPromptYM, state.expenses.length]);
 
   const fisheWarnings: string[] = [];
   if (isOverMonthlyBudget) fisheWarnings.push(getFisheWarning('monthly'));
@@ -97,12 +130,18 @@ const Index = () => {
     const parsed = parseExpenseText(text, state.categories);
     if (!parsed) return "🦆 Hmm, I couldn't find an amount there. Try something like \"Biryani 250\"!";
     const cat = state.categories.find(c => c.id === parsed.categoryId);
+    const expenseDate = new Date();
+    expenseDate.setDate(expenseDate.getDate() + parsed.dateOffsetDays);
     const expense: Expense = {
       id: Date.now().toString() + Math.random().toString(36).slice(2),
-      date: new Date().toISOString(), amount: parsed.amount, category: parsed.categoryId, note: parsed.note, rawText: text,
+      date: expenseDate.toISOString(), amount: parsed.amount, category: parsed.categoryId, note: parsed.note, rawText: text,
     };
     addExpense(expense);
-    return getMoonyResponse(parsed.amount, cat?.name || parsed.categoryId, parsed.note, currencySymbol);
+    let dayLabel = '';
+    if (parsed.dateOffsetDays === -1) dayLabel = ' (yesterday)';
+    else if (parsed.dateOffsetDays === -2) dayLabel = ' (day before yesterday)';
+    else if (parsed.dateOffsetDays < -2) dayLabel = ` (${Math.abs(parsed.dateOffsetDays)} days ago)`;
+    return getMoonyResponse(parsed.amount, cat?.name || parsed.categoryId, parsed.note + dayLabel, currencySymbol);
   }, [state.categories, addExpense, currencySymbol]);
 
   const handleQuickAdd = useCallback((amount: number, categoryId: string, note: string) => {
@@ -142,6 +181,30 @@ const Index = () => {
     );
   }
 
+  const handleLogoutKeep = async () => {
+    setLogoutOpen(false);
+    await signOut();
+  };
+
+  const handleLogoutReset = async () => {
+    setLogoutOpen(false);
+    resetUserData();
+    await signOut();
+  };
+
+  const handleSwitchMode = () => {
+    const newMode = state.mode === 'budgeting' ? 'analysis' : 'budgeting';
+    setFullState({ ...state, mode: newMode });
+  };
+
+  const dismissEom = (switchMode: boolean) => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const newMode = switchMode ? (state.mode === 'budgeting' ? 'analysis' : 'budgeting') : state.mode;
+    setFullState({ ...state, mode: newMode, lastMonthPromptYM: ym });
+    setEomOpen(false);
+  };
+
   const chatProps = {
     onSendExpense: handleSendExpense,
     currencySymbol,
@@ -158,14 +221,41 @@ const Index = () => {
     { id: 'calendar' as View, icon: Calendar, label: 'Calendar' },
     { id: 'report' as View, icon: BarChart3, label: 'Report' },
     { id: 'rewards' as View, icon: Trophy, label: 'Stickers' },
+    { id: 'wall' as View, icon: ImageIcon, label: 'Wall' },
   ];
 
   return (
-    <div className="min-h-screen bg-background sparkle-bg" onClick={unlockAudio} onTouchStart={unlockAudio}>
+    <div className="min-h-screen bg-background sparkle-bg relative overflow-x-hidden" onClick={unlockAudio} onTouchStart={unlockAudio}>
+      {/* Floating background sparkles */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        {['✨', '🦆', '💖', '⭐', '🌟', '💫', '🐟'].map((emoji, i) => (
+          <div
+            key={i}
+            className="absolute text-2xl opacity-20 animate-drift"
+            style={{
+              left: `${10 + i * 13}%`,
+              top: `${15 + (i * 17) % 70}%`,
+              animationDelay: `${i * 1.5}s`,
+              animationDuration: `${12 + i * 2}s`,
+            }}
+          >
+            {emoji}
+          </div>
+        ))}
+      </div>
+
+      <div className="relative z-10">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={moonyImg} alt="Mooney" className="w-10 h-10 rounded-full border-2 border-secondary object-cover" />
+            <motion.img
+              src={moonyImg}
+              alt="Mooney"
+              className="w-10 h-10 rounded-full border-2 border-secondary object-cover"
+              animate={{ y: [0, -4, 0], rotate: [-3, 3, -3] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              whileHover={{ scale: 1.15, rotate: 360 }}
+            />
             <div>
               <h1 className="text-lg font-display text-foreground leading-tight">Mooney</h1>
               <p className="text-xs text-muted-foreground">The Money Manager ✨</p>
@@ -176,21 +266,25 @@ const Index = () => {
             <Button variant="ghost" size="icon" onClick={() => setEditBudgetOpen(true)}>
               <Settings className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+            <Button variant="ghost" size="icon" onClick={() => setLogoutOpen(true)} title="Sign out">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
         <div className="container mx-auto px-4 pb-2">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto">
             {navItems.map(item => (
-              <button key={item.id} onClick={() => setView(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              <motion.button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                whileHover={{ scale: 1.08, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 ${
                   view === item.id ? 'gradient-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                 }`}>
                 <item.icon className="w-3.5 h-3.5" />
                 {item.label}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -199,7 +293,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         <AnimatePresence mode="wait">
           {view === 'dashboard' && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 {state.mode !== 'analysis' && (
                   <BudgetSummary monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
@@ -227,21 +321,26 @@ const Index = () => {
             </motion.div>
           )}
           {view === 'calendar' && (
-            <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div key="calendar" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <CalendarView expenses={state.expenses} categories={state.categories} dailyLimit={effectiveDailyLimit}
                 month={new Date().getMonth()} year={new Date().getFullYear()} />
             </motion.div>
           )}
           {view === 'report' && (
-            <motion.div key="report" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div key="report" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <MonthlySummary categories={state.categories} expenses={currentMonthExpenses}
                 monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} onReset={resetCurrentMonth} />
             </motion.div>
           )}
           {view === 'rewards' && (
-            <motion.div key="rewards" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div key="rewards" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <RewardsPage rewards={state.rewards} greenDayStreak={state.greenDayStreak}
                 stickerPlacements={state.stickerPlacements} onUpdatePlacements={setStickerPlacements} />
+            </motion.div>
+          )}
+          {view === 'wall' && (
+            <motion.div key="wall" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <BadgesWall rewards={state.rewards} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -277,7 +376,11 @@ const Index = () => {
 
       <QuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} categories={state.categories} onAdd={handleQuickAdd} />
       <EditBudgetDialog open={editBudgetOpen} onClose={() => setEditBudgetOpen(false)} categories={state.categories}
-        monthlyBudget={state.budgetConfig.monthlyBudget} dailyLimit={state.budgetConfig.dailyLimit} onSave={handleEditSave} />
+        monthlyBudget={state.budgetConfig.monthlyBudget} dailyLimit={state.budgetConfig.dailyLimit} onSave={handleEditSave}
+        mode={state.mode} onSwitchMode={handleSwitchMode} />
+      <LogoutDialog open={logoutOpen} onClose={() => setLogoutOpen(false)} onKeep={handleLogoutKeep} onReset={handleLogoutReset} />
+      <EndOfMonthDialog open={eomOpen} currentMode={state.mode} onContinue={() => dismissEom(false)} onSwitch={() => dismissEom(true)} />
+      </div>
     </div>
   );
 };
