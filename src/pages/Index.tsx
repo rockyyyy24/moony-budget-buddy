@@ -114,8 +114,15 @@ const Index = () => {
 
   const handleEditSave = useCallback((cats: typeof state.categories, monthly: number, daily: number) => {
     updateCategories(cats);
-    updateBudgetConfig({ monthlyBudget: monthly, dailyLimit: daily, month: new Date().getMonth(), year: new Date().getFullYear(), currency: state.budgetConfig.currency });
-  }, [updateCategories, updateBudgetConfig, state.budgetConfig.currency]);
+    updateBudgetConfig({
+      monthlyBudget: monthly,
+      dailyLimit: daily,
+      yearlyBudget: state.budgetConfig.yearlyBudget,
+      month: new Date().getMonth(),
+      year: new Date().getFullYear(),
+      currency: state.budgetConfig.currency,
+    });
+  }, [updateCategories, updateBudgetConfig, state.budgetConfig.currency, state.budgetConfig.yearlyBudget]);
 
   if (authLoading || !session) {
     return <div className="min-h-screen flex items-center justify-center bg-background">Loading...</div>;
@@ -124,9 +131,10 @@ const Index = () => {
   if (!state.isOnboarded) {
     return (
       <OnboardingWizard
-        onComplete={(categories, monthlyBudget, dailyLimit, currency) => {
+        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode) => {
           updateCategories(categories);
-          updateBudgetConfig({ monthlyBudget, dailyLimit, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
+          updateBudgetConfig({ monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
+          setFullState({ ...state, mode, categories, budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency }, isOnboarded: true });
           finishOnboarding();
         }}
       />
