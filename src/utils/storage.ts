@@ -11,11 +11,13 @@ const storageKey = () => currentUserId ? `${BASE_KEY}:${currentUserId}` : BASE_K
 
 const getDefaultState = (): AppState => ({
   isOnboarded: false,
+  mode: 'budgeting',
   categories: [],
   expenses: [],
   budgetConfig: {
     monthlyBudget: 0,
     dailyLimit: 0,
+    yearlyBudget: 0,
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
     currency: 'INR',
