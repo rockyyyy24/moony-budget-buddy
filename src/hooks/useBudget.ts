@@ -74,6 +74,9 @@ export const useBudget = () => {
 
   const totalSpent = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
 
+  const currentYearExpenses = state.expenses.filter(e => new Date(e.date).getFullYear() === now.getFullYear());
+  const yearSpent = currentYearExpenses.reduce((s, e) => s + e.amount, 0);
+
   const todayStr = now.toISOString().split('T')[0];
   const todayExpenses = currentMonthExpenses.filter(e => e.date.startsWith(todayStr));
   const todaySpent = todayExpenses.reduce((s, e) => s + e.amount, 0);
@@ -114,6 +117,7 @@ export const useBudget = () => {
     setFullState,
     currentMonthExpenses,
     totalSpent,
+    yearSpent,
     todaySpent,
     effectiveDailyLimit,
     getCategorySpent,
