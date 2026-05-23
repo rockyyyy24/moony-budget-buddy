@@ -1,1 +1,4 @@
 project_id = "rcrysphogzgmnffgnobw"
+
+[functions.mooney-chat]
+verify_jwt = false
