@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Category } from '@/types/budget';
 import { getSpendingSuggestions } from '@/utils/expenseParser';
+import { supabase } from '@/integrations/supabase/client';
 import moonyImg from '@/assets/moony.png';
 
 interface ChatMessage {
@@ -108,6 +109,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
     },
   ]);
   const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -186,20 +188,77 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
     return null;
   };
 
-  const handleSend = () => {
+  const askMooneyAI = async (history: ChatMessage[], userText: string): Promise<string> => {
+    try {
+      const topCategories = categories
+        .map(c => ({ name: c.name, spent: getCategorySpent(c.id) }))
+        .filter(x => x.spent > 0)
+        .sort((a, b) => b.spent - a.spent)
+        .slice(0, 3)
+        .map(x => `${x.name}: ${currencySymbol}${x.spent}`)
+        .join(', ');
+
+      const aiMessages = [
+        ...history.slice(-8).map(m => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        })),
+        { role: 'user', content: userText },
+      ];
+
+      const { data, error } = await supabase.functions.invoke('mooney-chat', {
+        body: {
+          messages: aiMessages,
+          context: {
+            currencySymbol,
+            monthlyBudget,
+            totalSpent,
+            todaySpent,
+            topCategories: topCategories || 'none yet',
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) return `🦆 ${data.error}`;
+      return data?.reply || "Hmm, I didn't catch that 🦆 try again?";
+    } catch (e) {
+      console.error('mooney-chat invoke failed', e);
+      return "My brain's a lil fuzzy rn 🦆💭 Try asking again in a sec!";
+    }
+  };
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMsg: ChatMessage = { id: Date.now().toString(), text: input, sender: 'user', timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
+    const userText = input;
+    setInput('');
 
-    const convoResponse = getConversationalResponse(input);
-    const response = convoResponse || onSendExpense(input);
+    const convoResponse = getConversationalResponse(userText);
+    const hasNumber = /\d/.test(userText);
+    let response: string;
+    let usedAI = false;
+
+    if (convoResponse) {
+      response = convoResponse;
+    } else if (hasNumber) {
+      // Looks like an expense — try logging
+      response = onSendExpense(userText);
+    } else {
+      // Fall back to AI for general chat / financial advice
+      usedAI = true;
+      setIsThinking(true);
+      response = await askMooneyAI(messages, userText);
+      setIsThinking(false);
+    }
 
     setTimeout(() => {
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: response, sender: 'moony', timestamp: new Date() }]);
 
       // Occasionally suggest a tip after expense logging
-      if (!convoResponse && Math.random() > 0.6) {
+      if (!convoResponse && !usedAI && hasNumber && Math.random() > 0.6) {
         setTimeout(() => {
           const topCat = categories.reduce((best, cat) => {
             const spent = getCategorySpent(cat.id);
@@ -213,9 +272,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
           }
         }, 1200);
       }
-    }, 400);
-
-    setInput('');
+    }, usedAI ? 0 : 400);
   };
 
   return (
@@ -243,6 +300,11 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
             </motion.div>
           ))}
         </AnimatePresence>
+        {isThinking && (
+          <div className="flex gap-2 items-center text-xs text-muted-foreground pl-10">
+            <span className="animate-pulse">🦆 Mooney is thinking…</span>
+          </div>
+        )}
       </div>
 
       <div className="p-3 border-t border-border bg-card">
@@ -251,7 +313,7 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
             <Plus className="w-4 h-4" />
           </Button>
           <Input placeholder="Chat or log expense..." value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()} className="bg-background border-border" />
+            onKeyDown={e => e.key === 'Enter' && handleSend()} className="bg-background border-border" disabled={isThinking} />
           <Button onClick={handleSend} size="icon" className="gradient-primary text-primary-foreground border-0 shrink-0">
             <Send className="w-4 h-4" />
           </Button>
