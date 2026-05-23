@@ -19,6 +19,7 @@ export interface Expense {
 export interface BudgetConfig {
   monthlyBudget: number;
   dailyLimit: number;
+  yearlyBudget: number;
   month: number;
   year: number;
   currency: string;
@@ -57,6 +58,7 @@ export interface StickerPlacement {
 
 export interface AppState {
   isOnboarded: boolean;
+  mode: 'budgeting' | 'analysis';
   categories: Category[];
   expenses: Expense[];
   budgetConfig: BudgetConfig;

@@ -21,6 +21,7 @@ import RewardsPage from '@/components/rewards/RewardsPage';
 import QuickAddDialog from '@/components/dashboard/QuickAddDialog';
 import EditBudgetDialog from '@/components/dashboard/EditBudgetDialog';
 import WelcomeGuide from '@/components/dashboard/WelcomeGuide';
+import SpendingAnalytics from '@/components/dashboard/SpendingAnalytics';
 import moonyImg from '@/assets/moony.png';
 
 type View = 'dashboard' | 'calendar' | 'report' | 'rewards';
@@ -114,8 +115,15 @@ const Index = () => {
 
   const handleEditSave = useCallback((cats: typeof state.categories, monthly: number, daily: number) => {
     updateCategories(cats);
-    updateBudgetConfig({ monthlyBudget: monthly, dailyLimit: daily, month: new Date().getMonth(), year: new Date().getFullYear(), currency: state.budgetConfig.currency });
-  }, [updateCategories, updateBudgetConfig, state.budgetConfig.currency]);
+    updateBudgetConfig({
+      monthlyBudget: monthly,
+      dailyLimit: daily,
+      yearlyBudget: state.budgetConfig.yearlyBudget,
+      month: new Date().getMonth(),
+      year: new Date().getFullYear(),
+      currency: state.budgetConfig.currency,
+    });
+  }, [updateCategories, updateBudgetConfig, state.budgetConfig.currency, state.budgetConfig.yearlyBudget]);
 
   if (authLoading || !session) {
     return <div className="min-h-screen flex items-center justify-center bg-background">Loading...</div>;
@@ -124,9 +132,10 @@ const Index = () => {
   if (!state.isOnboarded) {
     return (
       <OnboardingWizard
-        onComplete={(categories, monthlyBudget, dailyLimit, currency) => {
+        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode) => {
           updateCategories(categories);
-          updateBudgetConfig({ monthlyBudget, dailyLimit, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
+          updateBudgetConfig({ monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
+          setFullState({ ...state, mode, categories, budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency }, isOnboarded: true });
           finishOnboarding();
         }}
       />
@@ -192,8 +201,11 @@ const Index = () => {
           {view === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <BudgetSummary monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
-                  dailyLimit={effectiveDailyLimit} categories={state.categories} getCategorySpent={getCategorySpent} currencySymbol={currencySymbol} />
+                {state.mode !== 'analysis' && (
+                  <BudgetSummary monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
+                    dailyLimit={effectiveDailyLimit} categories={state.categories} getCategorySpent={getCategorySpent} currencySymbol={currencySymbol} />
+                )}
+                <SpendingAnalytics categories={state.categories} expenses={currentMonthExpenses} currencySymbol={currencySymbol} />
                 <div>
                   <h2 className="font-display text-foreground mb-3 text-lg">Categories</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

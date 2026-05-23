@@ -7,17 +7,26 @@ import { Plus, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 import moonyImg from '@/assets/moony.png';
 
 interface OnboardingWizardProps {
-  onComplete: (categories: Category[], monthlyBudget: number, dailyLimit: number, currency: string) => void;
+  onComplete: (
+    categories: Category[],
+    monthlyBudget: number,
+    dailyLimit: number,
+    yearlyBudget: number,
+    currency: string,
+    mode: 'budgeting' | 'analysis',
+  ) => void;
 }
 
 const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const [step, setStep] = useState(0);
+  const [mode, setMode] = useState<'budgeting' | 'analysis' | null>(null);
   const [currency, setCurrency] = useState('INR');
   const [selectedCats, setSelectedCats] = useState<string[]>(['food', 'travel', 'rent', 'bills', 'groceries']);
   const [customCatName, setCustomCatName] = useState('');
   const [customCats, setCustomCats] = useState<Omit<Category, 'monthlyLimit'>[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState('');
   const [dailyLimit, setDailyLimit] = useState('');
+  const [yearlyBudget, setYearlyBudget] = useState('');
   const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>({});
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '₹';
@@ -61,23 +70,70 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const handleComplete = () => {
     const budget = parseFloat(monthlyBudget) || 0;
     const daily = parseFloat(dailyLimit) || 0;
+    const yearly = parseFloat(yearlyBudget) || 0;
     const finalCategories: Category[] = allCats.map(c => ({
-      ...c, monthlyLimit: parseFloat(categoryLimits[c.id] || '0') || 0,
+      ...c,
+      monthlyLimit: mode === 'analysis' ? 0 : (parseFloat(categoryLimits[c.id] || '0') || 0),
     }));
-    onComplete(finalCategories, budget, daily, currency);
+    onComplete(finalCategories, budget, daily, yearly, currency, mode || 'budgeting');
   };
 
   const missing = analyzeMissing();
-  const canProceed = step === 0 ? true : step === 1 ? allCats.length > 0 : step === 2 ? parseFloat(monthlyBudget) > 0 : true;
+  const isAnalysis = mode === 'analysis';
+  const totalSteps = isAnalysis ? 3 : 5; // mode, currency, categories[, budget, limits]
+  const lastStep = totalSteps - 1;
 
-  const moonyMessages = [
-    "Hey there! 🦆 I'm Mooney, your money bestie! First, pick your currency!",
-    "Nice! 🎉 Now pick what you spend on — tap to select!",
-    "Great picks! 💰 Now let's talk numbers — how much can we work with?",
-    "Almost done! 🌟 Set limits per category or skip this step!",
-  ];
+  const canProceed =
+    step === 0 ? mode !== null
+    : step === 1 ? true
+    : step === 2 ? allCats.length > 0
+    : true;
 
-  const steps = [
+  const moonyMessages = isAnalysis
+    ? [
+        "Hey! 🦆 I'm Mooney. First — what do you want to do?",
+        "Cool! 💱 Pick your currency!",
+        "Now pick what you usually spend on — tap to select!",
+      ]
+    : [
+        "Hey! 🦆 I'm Mooney. First — what do you want to do?",
+        "Cool! 💱 Pick your currency!",
+        "Nice! 🎉 Now pick what you spend on — tap to select!",
+        "Great picks! 💰 Set your budgets — all optional!",
+        "Almost done! 🌟 Set per-category limits or skip!",
+      ];
+
+  const allSteps = [
+    // Step 0: Mode select
+    <motion.div key="mode" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-display text-foreground mb-2">What's your vibe? ✨</h2>
+        <p className="text-muted-foreground">Pick how you want to use Mooney</p>
+      </div>
+      <div className="grid grid-cols-1 gap-3">
+        <button onClick={() => setMode('budgeting')}
+          className={`kawaii-card text-left transition-all ${mode === 'budgeting' ? 'border-primary ring-2 ring-primary/30 bg-muted' : 'bg-card'}`}>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">💰</span>
+            <div>
+              <p className="font-semibold text-foreground">Budgeting</p>
+              <p className="text-xs text-muted-foreground">Set budgets &amp; track limits to save</p>
+            </div>
+          </div>
+        </button>
+        <button onClick={() => setMode('analysis')}
+          className={`kawaii-card text-left transition-all ${mode === 'analysis' ? 'border-primary ring-2 ring-primary/30 bg-muted' : 'bg-card'}`}>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📊</span>
+            <div>
+              <p className="font-semibold text-foreground">Spending Analysis</p>
+              <p className="text-xs text-muted-foreground">Just log &amp; see where your money goes</p>
+            </div>
+          </div>
+        </button>
+      </div>
+    </motion.div>,
+
     // Step 0: Currency
     <motion.div key="currency" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div className="text-center">
@@ -155,7 +211,7 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
       </div>
     </motion.div>,
 
-    // Step 3: Category Limits
+    // Step 4: Category Limits
     <motion.div key="limits" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-display text-foreground mb-2">Category Limits ✂️</h2>
@@ -174,6 +230,36 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     </motion.div>,
   ];
 
+  // Inject yearly budget input into the budget step (index 3 in allSteps).
+  // We rebuild step 3 below with yearly field inline.
+  allSteps[3] = (
+    <motion.div key="budget" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-display text-foreground mb-2">Set Your Budgets! 💰</h2>
+        <p className="text-muted-foreground">All fields are optional — fill what you want</p>
+      </div>
+      <div className="kawaii-card bg-card space-y-4">
+        <div>
+          <label className="text-sm font-semibold text-foreground block mb-2">Monthly Budget ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
+          <Input type="number" placeholder="e.g. 30000" value={monthlyBudget} onChange={e => setMonthlyBudget(e.target.value)} className="text-lg bg-card border-border" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-foreground block mb-2">Daily Limit ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
+          <Input type="number" placeholder={monthlyBudget ? `Auto: ${currencySymbol}${Math.round(parseFloat(monthlyBudget) / 30)}/day` : 'No limit'}
+            value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} className="bg-card border-border" />
+        </div>
+        <div>
+          <label className="text-sm font-semibold text-foreground block mb-2">Yearly Budget ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
+          <Input type="number" placeholder={monthlyBudget ? `Auto: ${currencySymbol}${(parseFloat(monthlyBudget) * 12).toLocaleString()}` : 'No limit'}
+            value={yearlyBudget} onChange={e => setYearlyBudget(e.target.value)} className="bg-card border-border" />
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  // Choose visible steps based on mode
+  const visibleSteps = isAnalysis ? [allSteps[0], allSteps[1], allSteps[2]] : allSteps;
+
   return (
     <div className="min-h-screen bg-background sparkle-bg flex items-center justify-center p-4">
       <div className="retro-window w-full max-w-lg">
@@ -191,16 +277,16 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
             </div>
           </div>
           <div className="flex gap-2 mb-6">
-            {[0, 1, 2, 3].map(i => (
+            {Array.from({ length: totalSteps }).map((_, i) => (
               <div key={i} className={`h-2 flex-1 rounded-full transition-all ${i <= step ? 'gradient-primary' : 'bg-muted'}`} />
             ))}
           </div>
-          <AnimatePresence mode="wait">{steps[step]}</AnimatePresence>
+          <AnimatePresence mode="wait">{visibleSteps[step]}</AnimatePresence>
           <div className="flex justify-between mt-6">
             <Button variant="outline" onClick={() => setStep(s => s - 1)} disabled={step === 0} className="gap-1">
               <ChevronLeft className="w-4 h-4" /> Back
             </Button>
-            {step < 3 ? (
+            {step < lastStep ? (
               <Button onClick={() => setStep(s => s + 1)} disabled={!canProceed} className="gap-1 gradient-primary text-primary-foreground border-0">
                 Next <ChevronRight className="w-4 h-4" />
               </Button>
