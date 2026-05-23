@@ -4,6 +4,8 @@ import fisheImg from '@/assets/fishe.png';
 
 interface BudgetSummaryProps {
   monthlyBudget: number;
+  yearlyBudget: number;
+  yearSpent: number;
   totalSpent: number;
   todaySpent: number;
   dailyLimit: number;
@@ -12,10 +14,24 @@ interface BudgetSummaryProps {
   currencySymbol: string;
 }
 
-const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit, currencySymbol }: BudgetSummaryProps) => {
+const BudgetSummary = ({ monthlyBudget, yearlyBudget, yearSpent, totalSpent, todaySpent, dailyLimit, categories, getCategorySpent, currencySymbol }: BudgetSummaryProps) => {
   const remaining = monthlyBudget - totalSpent;
   const percentage = monthlyBudget > 0 ? Math.min((totalSpent / monthlyBudget) * 100, 100) : 0;
   const isOver = remaining < 0;
+  const yearRemaining = yearlyBudget - yearSpent;
+  const yearIsOver = yearRemaining < 0;
+
+  const monthlyMessage = monthlyBudget > 0
+    ? (isOver
+        ? `🚨 You're over by ${currencySymbol}${Math.abs(remaining).toLocaleString()}. Let's slow down a bit, bestie! 💪`
+        : `✨ You still have ${currencySymbol}${remaining.toLocaleString()} left this month — spend wisely! 🦆💕`)
+    : null;
+
+  const yearlyMessage = yearlyBudget > 0
+    ? (yearIsOver
+        ? `🚨 Yearly budget over by ${currencySymbol}${Math.abs(yearRemaining).toLocaleString()}. Time to tighten up! 💪`
+        : `🌟 You still have ${currencySymbol}${yearRemaining.toLocaleString()} left for the year — pace yourself! 🦆`)
+    : null;
 
   return (
     <div className="retro-window">
@@ -64,6 +80,28 @@ const BudgetSummary = ({ monthlyBudget, totalSpent, todaySpent, dailyLimit, curr
             <span className="text-xs font-normal text-muted-foreground"> / {currencySymbol}{Math.round(dailyLimit).toLocaleString()}</span>
           </p>
         </div>
+
+        {monthlyMessage && (
+          <div className={`kawaii-card text-center text-sm ${isOver ? 'bg-destructive/10 border-destructive/30 text-destructive' : 'bg-success/10 border-success/30 text-foreground'}`}>
+            {monthlyMessage}
+          </div>
+        )}
+
+        {yearlyBudget > 0 && (
+          <div className="kawaii-card bg-background py-2 text-center">
+            <p className="text-xs text-muted-foreground">Yearly Budget</p>
+            <p className={`text-lg font-bold ${yearIsOver ? 'text-destructive' : 'text-foreground'}`}>
+              {currencySymbol}{yearSpent.toLocaleString()}
+              <span className="text-xs font-normal text-muted-foreground"> / {currencySymbol}{yearlyBudget.toLocaleString()}</span>
+            </p>
+          </div>
+        )}
+
+        {yearlyMessage && (
+          <div className={`kawaii-card text-center text-sm ${yearIsOver ? 'bg-destructive/10 border-destructive/30 text-destructive' : 'bg-secondary/30 border-secondary text-foreground'}`}>
+            {yearlyMessage}
+          </div>
+        )}
       </div>
     </div>
   );
