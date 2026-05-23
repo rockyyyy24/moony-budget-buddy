@@ -67,6 +67,7 @@ export interface AppState {
   greenDayStreak: number;
   stickerPlacements: StickerPlacement[];
   hasSeenGuide: boolean;
+  lastMonthPromptYM?: string; // "YYYY-MM" last time we asked the end-of-month switch
 }
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'monthlyLimit'>[] = [
@@ -102,4 +103,7 @@ export const REWARD_BADGES: Omit<Reward, 'earnedDate' | 'month' | 'year'>[] = [
   { id: 'penny-pincher', name: 'Penny Pincher', emoji: '🪙', description: 'Under budget in 5+ categories!' },
   { id: 'first-steps', name: 'First Steps', emoji: '👣', description: 'Logged your first expense!' },
   { id: 'week-warrior', name: 'Week Warrior', emoji: '⚔️', description: '7 days of tracking!' },
+  { id: 'green-goddess', name: 'Green Goddess', emoji: '🌿', description: 'Green streak for an entire month!' },
+  { id: 'mooney-vip', name: 'Mooney VIP', emoji: '👑', description: 'Tracked 30+ expenses in a month!' },
+  { id: 'comeback-kid', name: 'Comeback Kid', emoji: '🚀', description: 'Bounced back under budget after an overshoot!' },
 ];

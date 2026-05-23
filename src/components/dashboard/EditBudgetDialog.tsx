@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Category } from '@/types/budget';
+import { ArrowLeftRight } from 'lucide-react';
 
 interface EditBudgetDialogProps {
   open: boolean;
@@ -11,9 +12,11 @@ interface EditBudgetDialogProps {
   monthlyBudget: number;
   dailyLimit: number;
   onSave: (categories: Category[], monthlyBudget: number, dailyLimit: number) => void;
+  mode?: 'budgeting' | 'analysis';
+  onSwitchMode?: () => void;
 }
 
-const EditBudgetDialog = ({ open, onClose, categories, monthlyBudget, dailyLimit, onSave }: EditBudgetDialogProps) => {
+const EditBudgetDialog = ({ open, onClose, categories, monthlyBudget, dailyLimit, onSave, mode, onSwitchMode }: EditBudgetDialogProps) => {
   const [budget, setBudget] = useState(String(monthlyBudget));
   const [daily, setDaily] = useState(String(dailyLimit || ''));
   const [limits, setLimits] = useState<Record<string, string>>(
@@ -36,6 +39,24 @@ const EditBudgetDialog = ({ open, onClose, categories, monthlyBudget, dailyLimit
           <DialogTitle className="font-display text-foreground">⚙️ Edit Budgets</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {mode && onSwitchMode && (
+            <div className="kawaii-card bg-secondary/30 border-secondary">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Current mode</p>
+                  <p className="text-sm font-display text-foreground">
+                    {mode === 'budgeting' ? '💰 Budgeting' : '📊 Spending Analysis'}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={onSwitchMode}>
+                  <ArrowLeftRight className="w-3.5 h-3.5 mr-1" />
+                  Switch to {mode === 'budgeting' ? 'Analysis' : 'Budgeting'}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">All your expenses stay logged either way ✨</p>
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-semibold text-foreground block mb-1">Monthly Budget (₹)</label>
             <Input type="number" value={budget} onChange={e => setBudget(e.target.value)} className="bg-background border-border" />
