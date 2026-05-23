@@ -33,7 +33,7 @@ const Index = () => {
   const {
     state, addExpense, updateCategories, updateBudgetConfig, finishOnboarding,
     earnReward, toggleAlarm, changeExpenseCategory, resetCurrentMonth, setStickerPlacements,
-    currentMonthExpenses, totalSpent, todaySpent, effectiveDailyLimit,
+    currentMonthExpenses, totalSpent, yearSpent, todaySpent, effectiveDailyLimit,
     getCategorySpent, isOverMonthlyBudget, isOverDailyLimit, overBudgetCategories,
     setFullState,
   } = budget;
@@ -203,6 +203,7 @@ const Index = () => {
               <div className="lg:col-span-2 space-y-6">
                 {state.mode !== 'analysis' && (
                   <BudgetSummary monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
+                    yearlyBudget={state.budgetConfig.yearlyBudget || 0} yearSpent={yearSpent}
                     dailyLimit={effectiveDailyLimit} categories={state.categories} getCategorySpent={getCategorySpent} currencySymbol={currencySymbol} />
                 )}
                 <SpendingAnalytics categories={state.categories} expenses={currentMonthExpenses} currencySymbol={currencySymbol} />
@@ -212,7 +213,8 @@ const Index = () => {
                     {state.categories.map(cat => (
                       <CategoryCard key={cat.id} category={cat} spent={getCategorySpent(cat.id)}
                         expenses={currentMonthExpenses.filter(e => e.category === cat.id)}
-                        onChangeCategory={changeExpenseCategory} allCategories={state.categories} />
+                        onChangeCategory={changeExpenseCategory} allCategories={state.categories}
+                        currencySymbol={currencySymbol} showEncouragement={state.mode !== 'analysis'} />
                     ))}
                   </div>
                 </div>

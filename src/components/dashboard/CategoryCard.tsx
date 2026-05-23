@@ -11,9 +11,11 @@ interface CategoryCardProps {
   expenses: Expense[];
   onChangeCategory: (expenseId: string, newCatId: string) => void;
   allCategories: Category[];
+  currencySymbol?: string;
+  showEncouragement?: boolean;
 }
 
-const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategories }: CategoryCardProps) => {
+const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategories, currencySymbol = '₹', showEncouragement = true }: CategoryCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -44,7 +46,7 @@ const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategori
             {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
           <p className={`text-lg font-bold ${isOver ? 'text-destructive' : 'text-foreground'}`}>
-            ₹{spent.toLocaleString()}
+            {currencySymbol}{spent.toLocaleString()}
           </p>
           {category.monthlyLimit > 0 && (
             <div className="mt-1">
@@ -55,9 +57,16 @@ const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategori
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isOver ? `Over by ₹${Math.abs(remaining!).toLocaleString()}` : `₹${remaining!.toLocaleString()} left`}
-                {' '}/ ₹{category.monthlyLimit.toLocaleString()}
+                {isOver ? `Over by ${currencySymbol}${Math.abs(remaining!).toLocaleString()}` : `${currencySymbol}${remaining!.toLocaleString()} left`}
+                {' '}/ {currencySymbol}{category.monthlyLimit.toLocaleString()}
               </p>
+              {showEncouragement && (
+                <p className={`text-xs mt-1 font-medium ${isOver ? 'text-destructive' : 'text-success'}`}>
+                  {isOver
+                    ? `🚨 Over budget! Ease up on ${category.name.toLowerCase()} 💪`
+                    : `✨ ${currencySymbol}${remaining!.toLocaleString()} left for ${category.name.toLowerCase()} — spend wisely! 🦆`}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -95,7 +104,7 @@ const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategori
                       <p className="text-xs text-muted-foreground">{new Date(exp.date).toLocaleDateString()}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground">₹{exp.amount}</span>
+                      <span className="font-bold text-foreground">{currencySymbol}{exp.amount}</span>
                       <select
                         value={exp.category}
                         onChange={e => onChangeCategory(exp.id, e.target.value)}
@@ -115,7 +124,7 @@ const CategoryCard = ({ category, spent, expenses, onChangeCategory, allCategori
             {category.monthlyLimit > 0 && expenses.length > 0 && (
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <TrendingUp className="w-3 h-3" />
-                <span>Avg ₹{Math.round(spent / expenses.length)}/transaction</span>
+                <span>Avg {currencySymbol}{Math.round(spent / expenses.length)}/transaction</span>
               </div>
             )}
           </motion.div>
