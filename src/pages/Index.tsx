@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut, Image as ImageIcon } from 'lucide-react';
-import { CalendarRange } from 'lucide-react';
+import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut, Image as ImageIcon, CalendarRange } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
