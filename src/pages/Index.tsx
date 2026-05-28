@@ -172,7 +172,7 @@ const Index = () => {
   if (!state.isOnboarded) {
     return (
       <OnboardingWizard
-        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode, fyStartMonth, fyStartYear) => {
+        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode, fyStartMonth, fyStartYear, specialOverrides, specialLabels) => {
           updateCategories(categories);
           updateBudgetConfig({ monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
           setFullState({
@@ -180,6 +180,8 @@ const Index = () => {
             budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency },
             financialYearStartMonth: fyStartMonth,
             financialYearStartYear: fyStartYear,
+            monthlyBudgetOverrides: { ...(state.monthlyBudgetOverrides || {}), ...specialOverrides },
+            monthlyBudgetLabels: { ...(state.monthlyBudgetLabels || {}), ...specialLabels },
           });
           finishOnboarding();
         }}

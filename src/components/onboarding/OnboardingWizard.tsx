@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Plus, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 import moonyImg from '@/assets/moony.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_EMOJI = ['❄️','💕','🌸','🌷','🌼','☀️','🏖️','🌻','🍂','🎃','🦃','🎄'];
 
 interface OnboardingWizardProps {
   onComplete: (
@@ -19,6 +21,8 @@ interface OnboardingWizardProps {
     mode: 'budgeting' | 'analysis',
     fyStartMonth: number,
     fyStartYear: number,
+    specialOverrides: Record<string, number>,
+    specialLabels: Record<string, string>,
   ) => void;
 }
 
@@ -35,6 +39,11 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const [fyStartMonth, setFyStartMonth] = useState(new Date().getMonth());
   const [fyStartYear, setFyStartYear] = useState(new Date().getFullYear());
   const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>({});
+  const [specialOverrides, setSpecialOverrides] = useState<Record<string, number>>({});
+  const [specialLabels, setSpecialLabels] = useState<Record<string, string>>({});
+  const [editKey, setEditKey] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editLabel, setEditLabel] = useState('');
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '₹';
 
@@ -83,21 +92,22 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
       ...c,
       monthlyLimit: mode === 'analysis' ? 0 : (parseFloat(categoryLimits[c.id] || '0') || 0),
     }));
-    onComplete(finalCategories, budget, daily, yearly, currency, mode || 'budgeting', fyStartMonth, fyStartYear);
+    onComplete(finalCategories, budget, daily, yearly, currency, mode || 'budgeting', fyStartMonth, fyStartYear, specialOverrides, specialLabels);
   };
 
   const missing = analyzeMissing();
   const isAnalysis = mode === 'analysis';
-  // budgeting: mode, currency, YEARLY, categories, monthly, category-limits
+  // budgeting: mode, currency, YEARLY, SPECIALS, categories, monthly, category-limits
   // analysis : mode, currency, categories
-  const totalSteps = isAnalysis ? 3 : 6;
+  const totalSteps = isAnalysis ? 3 : 7;
   const lastStep = totalSteps - 1;
 
   const canProceed =
     step === 0 ? mode !== null
     : step === 1 ? true
-    : step === 2 ? (isAnalysis ? allCats.length > 0 : true) // yearly step always passable
-    : step === 3 ? (isAnalysis ? true : allCats.length > 0)
+    : step === 2 ? (isAnalysis ? allCats.length > 0 : true) // yearly always passable
+    : step === 3 ? (isAnalysis ? true : true) // specials always skippable
+    : step === 4 ? (isAnalysis ? true : allCats.length > 0)
     : true;
 
   const moonyMessages = isAnalysis
@@ -110,10 +120,119 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
         "Hey! 🦆 I'm Mooney. First — what do you want to do?",
         "Cool! 💱 Pick your currency!",
         "📅 Let's start big — what's your YEARLY budget & financial year?",
+        "🎂 Got any special months coming up? Tap to add — or skip & ask me later!",
         "Nice! 🎉 Now pick what you spend on — tap to select!",
         "💰 Want a custom monthly cap? (I'll auto-split yearly otherwise)",
         "Almost done! 🌟 Set per-category limits or skip!",
       ];
+
+  // Build the FY's 12 months for the specials step
+  const specialMonths = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(fyStartYear, fyStartMonth + i, 1);
+    return {
+      y: d.getFullYear(),
+      m: d.getMonth(),
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+    };
+  });
+
+  const openSpecialEdit = (key: string) => {
+    setEditKey(key);
+    setEditAmount(specialOverrides[key] != null ? String(specialOverrides[key]) : '');
+    setEditLabel(specialLabels[key] || '');
+  };
+  const saveSpecialEdit = () => {
+    if (!editKey) return;
+    const amt = parseFloat(editAmount);
+    const nextO = { ...specialOverrides };
+    const nextL = { ...specialLabels };
+    if (isNaN(amt) || amt <= 0) {
+      delete nextO[editKey];
+      delete nextL[editKey];
+    } else {
+      nextO[editKey] = amt;
+      if (editLabel.trim()) nextL[editKey] = editLabel.trim();
+      else delete nextL[editKey];
+    }
+    setSpecialOverrides(nextO);
+    setSpecialLabels(nextL);
+    setEditKey(null);
+  };
+
+  const specialsStep = (
+    <motion.div key="specials" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-display text-foreground mb-2">Add Special Spendings 🎂🎉</h2>
+        <p className="text-muted-foreground text-sm">Birthdays, trips, anniversaries — tap a month to plan it</p>
+      </div>
+      <div className="kawaii-card bg-secondary/30 border-secondary">
+        <p className="text-xs text-foreground">
+          💡 You can either add it <span className="font-semibold">manually</span> here, or just <span className="font-semibold">ask Mooney</span> later
+          (e.g. <span className="italic">"hey Mooney, trip to Goa in Feb, budget 30000"</span>) and I'll add it for you! 🦆✨
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+        {specialMonths.map(({ y, m, key }) => {
+          const has = specialOverrides[key] != null;
+          return (
+            <motion.button
+              key={key}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => openSpecialEdit(key)}
+              className={`kawaii-card text-center text-xs py-3 ${has ? 'border-primary ring-2 ring-primary/30 bg-muted' : 'bg-card'}`}
+            >
+              <div className="text-xl mb-0.5">{MONTH_EMOJI[m]}</div>
+              <div className="font-display text-foreground">{MONTH_NAMES[m]} {String(y).slice(-2)}</div>
+              {has ? (
+                <>
+                  <div className="text-[10px] text-primary font-semibold mt-0.5">{currencySymbol}{specialOverrides[key].toLocaleString()}</div>
+                  {specialLabels[key] && <div className="text-[9px] text-muted-foreground truncate">{specialLabels[key]}</div>}
+                </>
+              ) : (
+                <div className="text-[10px] text-muted-foreground mt-0.5">tap to add</div>
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-center text-muted-foreground">It's totally OK to skip — you can do this anytime later 🌟</p>
+
+      <Dialog open={!!editKey} onOpenChange={o => !o && setEditKey(null)}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-foreground">
+              {editKey && (() => {
+                const [y, mm] = editKey.split('-').map(Number);
+                return `${MONTH_EMOJI[mm - 1]} ${MONTH_NAMES[mm - 1]} ${y}`;
+              })()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1">What's happening?</label>
+              <Input value={editLabel} onChange={e => setEditLabel(e.target.value)}
+                placeholder="e.g. Goa trip, Mom's birthday, anniversary"
+                className="bg-background border-border" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1">Budget for this month ({currencySymbol})</label>
+              <Input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
+                placeholder="e.g. 30000" className="bg-background border-border text-lg" autoFocus />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={saveSpecialEdit} className="flex-1 gradient-primary text-primary-foreground border-0">Save ✨</Button>
+              {editKey && specialOverrides[editKey] != null && (
+                <Button variant="outline" onClick={() => { setEditAmount(''); setEditLabel(''); saveSpecialEdit(); }}>
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
 
   const yearlyStep = (
     <motion.div key="yearly" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
@@ -308,10 +427,10 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     </motion.div>
   );
 
-  // Reorder for budgeting: mode, currency, YEARLY, categories, monthly, limits
+  // Reorder for budgeting: mode, currency, YEARLY, SPECIALS, categories, monthly, limits
   const visibleSteps = isAnalysis
     ? [allSteps[0], allSteps[1], allSteps[2]]
-    : [allSteps[0], allSteps[1], yearlyStep, allSteps[2], allSteps[3], allSteps[4]];
+    : [allSteps[0], allSteps[1], yearlyStep, specialsStep, allSteps[2], allSteps[3], allSteps[4]];
 
   return (
     <div className="min-h-screen bg-background sparkle-bg flex items-center justify-center p-4">
