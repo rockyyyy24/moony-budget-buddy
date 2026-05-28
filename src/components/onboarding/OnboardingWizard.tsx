@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 import moonyImg from '@/assets/moony.png';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 interface OnboardingWizardProps {
   onComplete: (
@@ -14,6 +17,8 @@ interface OnboardingWizardProps {
     yearlyBudget: number,
     currency: string,
     mode: 'budgeting' | 'analysis',
+    fyStartMonth: number,
+    fyStartYear: number,
   ) => void;
 }
 
@@ -27,6 +32,8 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const [monthlyBudget, setMonthlyBudget] = useState('');
   const [dailyLimit, setDailyLimit] = useState('');
   const [yearlyBudget, setYearlyBudget] = useState('');
+  const [fyStartMonth, setFyStartMonth] = useState(new Date().getMonth());
+  const [fyStartYear, setFyStartYear] = useState(new Date().getFullYear());
   const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>({});
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '₹';
@@ -68,25 +75,29 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   };
 
   const handleComplete = () => {
-    const budget = parseFloat(monthlyBudget) || 0;
-    const daily = parseFloat(dailyLimit) || 0;
     const yearly = parseFloat(yearlyBudget) || 0;
+    // Default monthly = yearly / 12 if user didn't override
+    const budget = parseFloat(monthlyBudget) || (yearly > 0 ? Math.round(yearly / 12) : 0);
+    const daily = parseFloat(dailyLimit) || 0;
     const finalCategories: Category[] = allCats.map(c => ({
       ...c,
       monthlyLimit: mode === 'analysis' ? 0 : (parseFloat(categoryLimits[c.id] || '0') || 0),
     }));
-    onComplete(finalCategories, budget, daily, yearly, currency, mode || 'budgeting');
+    onComplete(finalCategories, budget, daily, yearly, currency, mode || 'budgeting', fyStartMonth, fyStartYear);
   };
 
   const missing = analyzeMissing();
   const isAnalysis = mode === 'analysis';
-  const totalSteps = isAnalysis ? 3 : 5; // mode, currency, categories[, budget, limits]
+  // budgeting: mode, currency, YEARLY, categories, monthly, category-limits
+  // analysis : mode, currency, categories
+  const totalSteps = isAnalysis ? 3 : 6;
   const lastStep = totalSteps - 1;
 
   const canProceed =
     step === 0 ? mode !== null
     : step === 1 ? true
-    : step === 2 ? allCats.length > 0
+    : step === 2 ? (isAnalysis ? allCats.length > 0 : true) // yearly step always passable
+    : step === 3 ? (isAnalysis ? true : allCats.length > 0)
     : true;
 
   const moonyMessages = isAnalysis
@@ -98,10 +109,52 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     : [
         "Hey! 🦆 I'm Mooney. First — what do you want to do?",
         "Cool! 💱 Pick your currency!",
+        "📅 Let's start big — what's your YEARLY budget & financial year?",
         "Nice! 🎉 Now pick what you spend on — tap to select!",
-        "Great picks! 💰 Set your budgets — all optional!",
+        "💰 Want a custom monthly cap? (I'll auto-split yearly otherwise)",
         "Almost done! 🌟 Set per-category limits or skip!",
       ];
+
+  const yearlyStep = (
+    <motion.div key="yearly" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-display text-foreground mb-2">Your Yearly Overview 📅</h2>
+        <p className="text-muted-foreground">Mooney will plan your whole year from here</p>
+      </div>
+      <div className="kawaii-card bg-card space-y-4">
+        <div>
+          <label className="text-sm font-semibold text-foreground block mb-2">Yearly Budget ({currencySymbol})</label>
+          <Input type="number" placeholder="e.g. 360000" value={yearlyBudget}
+            onChange={e => setYearlyBudget(e.target.value)} className="text-lg bg-card border-border" autoFocus />
+          {yearlyBudget && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Auto monthly: {currencySymbol}{Math.round(parseFloat(yearlyBudget) / 12).toLocaleString()}/month — you can override later
+            </p>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1">FY starts (month)</label>
+            <Select value={String(fyStartMonth)} onValueChange={v => setFyStartMonth(parseInt(v))}>
+              <SelectTrigger className="bg-background border-border"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTH_NAMES.map((n, i) => <SelectItem key={i} value={String(i)}>{n}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-foreground block mb-1">FY starts (year)</label>
+            <Input type="number" value={fyStartYear}
+              onChange={e => setFyStartYear(parseInt(e.target.value) || new Date().getFullYear())}
+              className="bg-background border-border" />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          e.g. <span className="text-foreground font-semibold">Mar {String(fyStartYear).slice(-2)}</span> → Feb {String(fyStartYear + 1).slice(-2)}. You can edit any individual month later (or just tell Mooney!).
+        </p>
+      </div>
+    </motion.div>
+  );
 
   const allSteps = [
     // Step 0: Mode select
@@ -230,35 +283,35 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     </motion.div>,
   ];
 
-  // Inject yearly budget input into the budget step (index 3 in allSteps).
-  // We rebuild step 3 below with yearly field inline.
+  // Replace the monthly-budget step (index 3) with a leaner monthly + daily,
+  // since yearly is now its own earlier step.
   allSteps[3] = (
     <motion.div key="budget" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-display text-foreground mb-2">Set Your Budgets! 💰</h2>
-        <p className="text-muted-foreground">All fields are optional — fill what you want</p>
+        <h2 className="text-2xl font-display text-foreground mb-2">Monthly Cap (optional) 💰</h2>
+        <p className="text-muted-foreground">Leave blank to auto-split your yearly budget</p>
       </div>
       <div className="kawaii-card bg-card space-y-4">
         <div>
-          <label className="text-sm font-semibold text-foreground block mb-2">Monthly Budget ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
-          <Input type="number" placeholder="e.g. 30000" value={monthlyBudget} onChange={e => setMonthlyBudget(e.target.value)} className="text-lg bg-card border-border" />
+          <label className="text-sm font-semibold text-foreground block mb-2">Monthly Budget ({currencySymbol})</label>
+          <Input type="number"
+            placeholder={yearlyBudget ? `Auto: ${currencySymbol}${Math.round(parseFloat(yearlyBudget) / 12).toLocaleString()}` : 'e.g. 30000'}
+            value={monthlyBudget} onChange={e => setMonthlyBudget(e.target.value)} className="text-lg bg-card border-border" />
         </div>
         <div>
           <label className="text-sm font-semibold text-foreground block mb-2">Daily Limit ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
-          <Input type="number" placeholder={monthlyBudget ? `Auto: ${currencySymbol}${Math.round(parseFloat(monthlyBudget) / 30)}/day` : 'No limit'}
+          <Input type="number"
+            placeholder={monthlyBudget ? `Auto: ${currencySymbol}${Math.round(parseFloat(monthlyBudget) / 30)}/day` : 'No limit'}
             value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} className="bg-card border-border" />
-        </div>
-        <div>
-          <label className="text-sm font-semibold text-foreground block mb-2">Yearly Budget ({currencySymbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
-          <Input type="number" placeholder={monthlyBudget ? `Auto: ${currencySymbol}${(parseFloat(monthlyBudget) * 12).toLocaleString()}` : 'No limit'}
-            value={yearlyBudget} onChange={e => setYearlyBudget(e.target.value)} className="bg-card border-border" />
         </div>
       </div>
     </motion.div>
   );
 
-  // Choose visible steps based on mode
-  const visibleSteps = isAnalysis ? [allSteps[0], allSteps[1], allSteps[2]] : allSteps;
+  // Reorder for budgeting: mode, currency, YEARLY, categories, monthly, limits
+  const visibleSteps = isAnalysis
+    ? [allSteps[0], allSteps[1], allSteps[2]]
+    : [allSteps[0], allSteps[1], yearlyStep, allSteps[2], allSteps[3], allSteps[4]];
 
   return (
     <div className="min-h-screen bg-background sparkle-bg flex items-center justify-center p-4">
