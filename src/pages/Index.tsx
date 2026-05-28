@@ -172,10 +172,15 @@ const Index = () => {
   if (!state.isOnboarded) {
     return (
       <OnboardingWizard
-        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode) => {
+        onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode, fyStartMonth, fyStartYear) => {
           updateCategories(categories);
           updateBudgetConfig({ monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
-          setFullState({ ...state, mode, categories, budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency }, isOnboarded: true });
+          setFullState({
+            ...state, mode, categories, isOnboarded: true,
+            budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency },
+            financialYearStartMonth: fyStartMonth,
+            financialYearStartYear: fyStartYear,
+          });
           finishOnboarding();
         }}
       />
@@ -206,15 +211,53 @@ const Index = () => {
     setEomOpen(false);
   };
 
+  // Effective monthly budget = override for current month (if any) else configured monthly
+  const nowEff = new Date();
+  const currentYM = `${nowEff.getFullYear()}-${String(nowEff.getMonth() + 1).padStart(2, '0')}`;
+  const overrideForThisMonth = state.monthlyBudgetOverrides?.[currentYM];
+  const effectiveMonthlyBudget = overrideForThisMonth ?? state.budgetConfig.monthlyBudget;
+  const currentMonthLabel = state.monthlyBudgetLabels?.[currentYM];
+
+  const handleMooneyActions = (
+    actions: Array<{ type: string; monthIso?: string; amount?: number; label?: string }>
+  ) => {
+    if (!actions || actions.length === 0) return;
+    const nextOverrides = { ...(state.monthlyBudgetOverrides || {}) };
+    const nextLabels = { ...(state.monthlyBudgetLabels || {}) };
+    for (const a of actions) {
+      if (!a.monthIso) continue;
+      if (a.type === 'set_month_budget' && typeof a.amount === 'number' && a.amount >= 0) {
+        nextOverrides[a.monthIso] = a.amount;
+        if (a.label) nextLabels[a.monthIso] = a.label;
+      } else if (a.type === 'reset_month_budget') {
+        delete nextOverrides[a.monthIso];
+        delete nextLabels[a.monthIso];
+      }
+    }
+    setFullState({ ...state, monthlyBudgetOverrides: nextOverrides, monthlyBudgetLabels: nextLabels });
+  };
+
+  const setDayLabel = (dateStr: string, label: string) => {
+    const next = { ...(state.dayLabels || {}) };
+    if (label.trim()) next[dateStr] = label.trim();
+    else delete next[dateStr];
+    setFullState({ ...state, dayLabels: next });
+  };
+
   const chatProps = {
     onSendExpense: handleSendExpense,
     currencySymbol,
     todaySpent,
     dailyLimit: effectiveDailyLimit,
     totalSpent,
-    monthlyBudget: state.budgetConfig.monthlyBudget,
+    monthlyBudget: effectiveMonthlyBudget,
     categories: state.categories,
     getCategorySpent,
+    fyStartMonth: state.financialYearStartMonth ?? 0,
+    fyStartYear: state.financialYearStartYear ?? new Date().getFullYear(),
+    monthlyBudgetOverrides: state.monthlyBudgetOverrides || {},
+    monthlyBudgetLabels: state.monthlyBudgetLabels || {},
+    onMooneyActions: handleMooneyActions,
   };
 
   const navItems = [
@@ -298,9 +341,14 @@ const Index = () => {
             <motion.div key="dashboard" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 {state.mode !== 'analysis' && (
-                  <BudgetSummary monthlyBudget={state.budgetConfig.monthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
+                  <BudgetSummary monthlyBudget={effectiveMonthlyBudget} totalSpent={totalSpent} todaySpent={todaySpent}
                     yearlyBudget={state.budgetConfig.yearlyBudget || 0} yearSpent={yearSpent}
                     dailyLimit={effectiveDailyLimit} categories={state.categories} getCategorySpent={getCategorySpent} currencySymbol={currencySymbol} />
+                )}
+                {currentMonthLabel && (
+                  <p className="text-xs text-center text-muted-foreground -mt-2">
+                    ✨ Custom plan this month: <span className="text-foreground font-semibold">{currentMonthLabel}</span>
+                  </p>
                 )}
                 <SpendingAnalytics categories={state.categories} expenses={currentMonthExpenses} currencySymbol={currencySymbol} />
                 <div>
@@ -325,7 +373,8 @@ const Index = () => {
           {view === 'calendar' && (
             <motion.div key="calendar" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <CalendarView expenses={state.expenses} categories={state.categories} dailyLimit={effectiveDailyLimit}
-                month={new Date().getMonth()} year={new Date().getFullYear()} />
+                month={new Date().getMonth()} year={new Date().getFullYear()}
+                dayLabels={state.dayLabels || {}} onSetDayLabel={setDayLabel} />
             </motion.div>
           )}
           {view === 'year' && (
