@@ -27,6 +27,9 @@ const getDefaultState = (): AppState => ({
   greenDayStreak: 0,
   stickerPlacements: [],
   hasSeenGuide: false,
+  financialYearStartMonth: 0,
+  financialYearStartYear: new Date().getFullYear(),
+  monthlyBudgetOverrides: {},
 });
 
 export const loadState = (): AppState => {
