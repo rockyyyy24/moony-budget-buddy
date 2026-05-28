@@ -71,6 +71,8 @@ export interface AppState {
   financialYearStartMonth?: number; // 0-11, default 0 (Jan)
   financialYearStartYear?: number; // e.g. 2026 — anchor year for "March 26 → April 27"
   monthlyBudgetOverrides?: Record<string, number>; // key "YYYY-MM" → budget for that month
+  monthlyBudgetLabels?: Record<string, string>; // key "YYYY-MM" → label like "Goa trip"
+  dayLabels?: Record<string, string>; // key "YYYY-MM-DD" → free-text label for that day
 }
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'monthlyLimit'>[] = [

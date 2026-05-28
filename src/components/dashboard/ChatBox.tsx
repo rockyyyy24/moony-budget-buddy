@@ -25,6 +25,11 @@ interface ChatBoxProps {
   monthlyBudget: number;
   categories: Category[];
   getCategorySpent: (id: string) => number;
+  fyStartMonth?: number;
+  fyStartYear?: number;
+  monthlyBudgetOverrides?: Record<string, number>;
+  monthlyBudgetLabels?: Record<string, string>;
+  onMooneyActions?: (actions: Array<{ type: string; monthIso?: string; amount?: number; label?: string }>) => void;
 }
 
 const GREETINGS = ['hi', 'hello', 'hey', 'sup', 'yo', 'hola', 'howdy', 'what\'s up', 'whats up', 'wassup'];
@@ -99,7 +104,13 @@ const randomPickIdx = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.le
 
 const randomPick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
-const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyLimit, totalSpent, monthlyBudget, categories, getCategorySpent }: ChatBoxProps) => {
+const MONTH_NAMES_FULL = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const BUDGET_INTENT = /\b(budget|trip|vacation|wedding|plan|planning|gift|gifts|event|festival|cancel|cancell?ed|scrap|remove|reset)\b/i;
+
+const ChatBox = ({
+  onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyLimit, totalSpent, monthlyBudget, categories, getCategorySpent,
+  fyStartMonth = 0, fyStartYear = new Date().getFullYear(), monthlyBudgetOverrides = {}, monthlyBudgetLabels = {}, onMooneyActions,
+}: ChatBoxProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -215,11 +226,17 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
             totalSpent,
             todaySpent,
             topCategories: topCategories || 'none yet',
+            fyStart: `${MONTH_NAMES_FULL[fyStartMonth]} ${fyStartYear}`,
+            monthlyBudgetOverrides,
+            monthlyBudgetLabels,
           },
         },
       });
       if (error) throw error;
       if (data?.error) return `🦆 ${data.error}`;
+      if (Array.isArray(data?.actions) && data.actions.length > 0 && onMooneyActions) {
+        onMooneyActions(data.actions);
+      }
       return data?.reply || "Hmm, I didn't catch that 🦆 try again?";
     } catch (e) {
       console.error('mooney-chat invoke failed', e);
@@ -238,11 +255,20 @@ const ChatBox = ({ onSendExpense, onQuickAdd, currencySymbol, todaySpent, dailyL
 
     const convoResponse = getConversationalResponse(userText);
     const hasNumber = /\d/.test(userText);
+    const lowerText = userText.toLowerCase();
+    const mentionsMonth = MONTH_NAMES_FULL.some(m => lowerText.includes(m));
+    const isBudgetPlan = mentionsMonth && BUDGET_INTENT.test(lowerText);
     let response: string;
     let usedAI = false;
 
     if (convoResponse) {
       response = convoResponse;
+    } else if (isBudgetPlan) {
+      // Trip / month-budget planning → let AI handle via tool calls
+      usedAI = true;
+      setIsThinking(true);
+      response = await askMooneyAI(messages, userText);
+      setIsThinking(false);
     } else if (hasNumber) {
       // Looks like an expense — try logging
       response = onSendExpense(userText);

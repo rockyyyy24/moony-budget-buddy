@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Expense, Category } from '@/types/budget';
 
 interface CalendarViewProps {
@@ -10,12 +11,19 @@ interface CalendarViewProps {
   dailyLimit: number;
   month: number;
   year: number;
+  dayLabels?: Record<string, string>;
+  onSetDayLabel?: (dateStr: string, label: string) => void;
 }
 
-const CalendarView = ({ expenses, categories, dailyLimit, month, year }: CalendarViewProps) => {
+const CalendarView = ({ expenses, categories, dailyLimit, month, year, dayLabels = {}, onSetDayLabel }: CalendarViewProps) => {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [viewMonth, setViewMonth] = useState(month);
   const [viewYear, setViewYear] = useState(year);
+  const [labelDraft, setLabelDraft] = useState('');
+
+  useEffect(() => {
+    setLabelDraft(selectedDay ? (dayLabels[selectedDay] || '') : '');
+  }, [selectedDay, dayLabels]);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
@@ -107,6 +115,9 @@ const CalendarView = ({ expenses, categories, dailyLimit, month, year }: Calenda
                 {hasSpending && (
                   <span className="text-[10px] font-bold">₹{data.spent > 999 ? `${Math.round(data.spent / 1000)}k` : data.spent}</span>
                 )}
+                {dayLabels[dateStr] && (
+                  <span className="absolute top-0.5 right-0.5 text-[8px]" title={dayLabels[dateStr]}>📝</span>
+                )}
               </motion.button>
             );
           })}
@@ -132,6 +143,27 @@ const CalendarView = ({ expenses, categories, dailyLimit, month, year }: Calenda
               ₹{selectedDayData.spent.toLocaleString()} spent
               {dailyLimit > 0 && <span className="text-xs font-normal text-muted-foreground"> / ₹{dailyLimit.toLocaleString()} limit</span>}
             </p>
+
+            {onSetDayLabel && (
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">📝 Label this day (e.g. "Friend's wedding", "Goa trip")</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={labelDraft}
+                    onChange={e => setLabelDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onSetDayLabel(selectedDay!, labelDraft); }}
+                    placeholder="Type a label & press Enter…"
+                    className="bg-card border-border text-sm h-8"
+                  />
+                  <Button size="sm" variant="outline" onClick={() => onSetDayLabel(selectedDay!, labelDraft)}>
+                    Save
+                  </Button>
+                </div>
+                {dayLabels[selectedDay!] && (
+                  <p className="text-xs text-primary mt-1">Saved: <span className="font-semibold">{dayLabels[selectedDay!]}</span></p>
+                )}
+              </div>
+            )}
 
             {selectedDayData.expenses.length === 0 ? (
               <p className="text-sm text-muted-foreground">No expenses this day 🎉</p>
