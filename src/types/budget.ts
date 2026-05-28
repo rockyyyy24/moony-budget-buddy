@@ -68,6 +68,9 @@ export interface AppState {
   stickerPlacements: StickerPlacement[];
   hasSeenGuide: boolean;
   lastMonthPromptYM?: string; // "YYYY-MM" last time we asked the end-of-month switch
+  financialYearStartMonth?: number; // 0-11, default 0 (Jan)
+  financialYearStartYear?: number; // e.g. 2026 — anchor year for "March 26 → April 27"
+  monthlyBudgetOverrides?: Record<string, number>; // key "YYYY-MM" → budget for that month
 }
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'monthlyLimit'>[] = [

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut, Image as ImageIcon } from 'lucide-react';
+import { Settings, Calendar, Trophy, BarChart3, MessageCircle, X, LogOut, Image as ImageIcon, CalendarRange } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ import CalendarView from '@/components/calendar/CalendarView';
 import MonthlySummary from '@/components/monthly/MonthlySummary';
 import RewardsPage from '@/components/rewards/RewardsPage';
 import BadgesWall from '@/components/rewards/BadgesWall';
+import YearlyOverview from '@/components/yearly/YearlyOverview';
 import QuickAddDialog from '@/components/dashboard/QuickAddDialog';
 import EditBudgetDialog from '@/components/dashboard/EditBudgetDialog';
 import WelcomeGuide from '@/components/dashboard/WelcomeGuide';
@@ -28,7 +29,7 @@ import LogoutDialog from '@/components/dashboard/LogoutDialog';
 import EndOfMonthDialog from '@/components/dashboard/EndOfMonthDialog';
 import moonyImg from '@/assets/moony.png';
 
-type View = 'dashboard' | 'calendar' | 'report' | 'rewards' | 'wall';
+type View = 'dashboard' | 'calendar' | 'year' | 'report' | 'rewards' | 'wall';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -219,6 +220,7 @@ const Index = () => {
   const navItems = [
     { id: 'dashboard' as View, icon: MessageCircle, label: 'Home' },
     { id: 'calendar' as View, icon: Calendar, label: 'Calendar' },
+    { id: 'year' as View, icon: CalendarRange, label: 'Year' },
     { id: 'report' as View, icon: BarChart3, label: 'Report' },
     { id: 'rewards' as View, icon: Trophy, label: 'Stickers' },
     { id: 'wall' as View, icon: ImageIcon, label: 'Wall' },
@@ -324,6 +326,21 @@ const Index = () => {
             <motion.div key="calendar" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <CalendarView expenses={state.expenses} categories={state.categories} dailyLimit={effectiveDailyLimit}
                 month={new Date().getMonth()} year={new Date().getFullYear()} />
+            </motion.div>
+          )}
+          {view === 'year' && (
+            <motion.div key="year" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <YearlyOverview
+                expenses={state.expenses}
+                defaultMonthlyBudget={state.budgetConfig.monthlyBudget}
+                overrides={state.monthlyBudgetOverrides || {}}
+                fyStartMonth={state.financialYearStartMonth ?? 0}
+                fyStartYear={state.financialYearStartYear ?? new Date().getFullYear()}
+                currencySymbol={currencySymbol}
+                onUpdateOverrides={(next) => setFullState({ ...state, monthlyBudgetOverrides: next })}
+                onUpdateFY={(m, y) => setFullState({ ...state, financialYearStartMonth: m, financialYearStartYear: y })}
+                onUpdateDefaultMonthly={(amount) => updateBudgetConfig({ ...state.budgetConfig, monthlyBudget: amount })}
+              />
             </motion.div>
           )}
           {view === 'report' && (
