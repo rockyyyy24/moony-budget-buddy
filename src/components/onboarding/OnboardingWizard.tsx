@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Category, DEFAULT_CATEGORIES, CURRENCIES } from '@/types/budget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
+import { Plus, X, ChevronRight, ChevronLeft, Sparkles, Trash2, AlertTriangle } from 'lucide-react';
 import moonyImg from '@/assets/moony.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -39,11 +39,12 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const [fyStartMonth, setFyStartMonth] = useState(new Date().getMonth());
   const [fyStartYear, setFyStartYear] = useState(new Date().getFullYear());
   const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>({});
-  const [specialOverrides, setSpecialOverrides] = useState<Record<string, number>>({});
-  const [specialLabels, setSpecialLabels] = useState<Record<string, string>>({});
+  // Multiple events per month: { 'YYYY-MM': [{id,label,amount}, ...] }
+  type SpecialEvent = { id: string; label: string; amount: number };
+  const [specialEvents, setSpecialEvents] = useState<Record<string, SpecialEvent[]>>({});
   const [editKey, setEditKey] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editLabel, setEditLabel] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [newAmount, setNewAmount] = useState('');
 
   const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '₹';
 
@@ -82,6 +83,19 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     if (!has.has('health')) missing.push('Health 💊');
     return missing;
   };
+
+  // Derive overrides (sum per month) + labels (joined) from events
+  const specialOverrides: Record<string, number> = {};
+  const specialLabels: Record<string, string> = {};
+  Object.entries(specialEvents).forEach(([k, evs]) => {
+    if (!evs || evs.length === 0) return;
+    const total = evs.reduce((s, e) => s + (e.amount || 0), 0);
+    if (total > 0) {
+      specialOverrides[k] = total;
+      const labels = evs.filter(e => e.label.trim()).map(e => e.label.trim());
+      if (labels.length) specialLabels[k] = labels.join(' + ');
+    }
+  });
 
   const handleComplete = () => {
     const yearly = parseFloat(yearlyBudget) || 0;
@@ -136,27 +150,42 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
     };
   });
 
+  // Yearly math for the specials step
+  const yearlyNum = parseFloat(yearlyBudget) || 0;
+  const totalCommitted = Object.values(specialOverrides).reduce((s, v) => s + v, 0);
+  const overriddenCount = Object.keys(specialOverrides).length;
+  const remainingForOthers = yearlyNum - totalCommitted;
+  const otherMonthsCount = Math.max(0, 12 - overriddenCount);
+  const autoPerOtherMonth = otherMonthsCount > 0 ? Math.floor(remainingForOthers / otherMonthsCount) : 0;
+  const overYearly = yearlyNum > 0 && totalCommitted > yearlyNum;
+  const autoNegative = yearlyNum > 0 && otherMonthsCount > 0 && autoPerOtherMonth < 0;
+
   const openSpecialEdit = (key: string) => {
     setEditKey(key);
-    setEditAmount(specialOverrides[key] != null ? String(specialOverrides[key]) : '');
-    setEditLabel(specialLabels[key] || '');
+    setNewLabel('');
+    setNewAmount('');
   };
-  const saveSpecialEdit = () => {
+  const addEvent = () => {
     if (!editKey) return;
-    const amt = parseFloat(editAmount);
-    const nextO = { ...specialOverrides };
-    const nextL = { ...specialLabels };
-    if (isNaN(amt) || amt <= 0) {
-      delete nextO[editKey];
-      delete nextL[editKey];
-    } else {
-      nextO[editKey] = amt;
-      if (editLabel.trim()) nextL[editKey] = editLabel.trim();
-      else delete nextL[editKey];
-    }
-    setSpecialOverrides(nextO);
-    setSpecialLabels(nextL);
-    setEditKey(null);
+    const amt = parseFloat(newAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    const ev: SpecialEvent = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      label: newLabel.trim(),
+      amount: amt,
+    };
+    setSpecialEvents(prev => ({ ...prev, [editKey]: [...(prev[editKey] || []), ev] }));
+    setNewLabel('');
+    setNewAmount('');
+  };
+  const removeEvent = (key: string, id: string) => {
+    setSpecialEvents(prev => {
+      const list = (prev[key] || []).filter(e => e.id !== id);
+      const next = { ...prev };
+      if (list.length === 0) delete next[key];
+      else next[key] = list;
+      return next;
+    });
   };
 
   const specialsStep = (
@@ -171,9 +200,45 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
           (e.g. <span className="italic">"hey Mooney, trip to Goa in Feb, budget 30000"</span>) and I'll add it for you! 🦆✨
         </p>
       </div>
+
+      {/* Yearly math summary */}
+      {yearlyNum > 0 && (
+        <div className={`kawaii-card ${overYearly || autoNegative ? 'bg-destructive/15 border-destructive' : 'bg-card'}`}>
+          <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+            <div>
+              <p className="text-muted-foreground">Yearly</p>
+              <p className="font-display text-foreground">{currencySymbol}{yearlyNum.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Special plans</p>
+              <p className={`font-display ${overYearly ? 'text-destructive' : 'text-foreground'}`}>{currencySymbol}{totalCommitted.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Auto / other month</p>
+              <p className={`font-display ${autoNegative ? 'text-destructive' : 'text-success'}`}>
+                {otherMonthsCount > 0 ? `${currencySymbol}${autoPerOtherMonth.toLocaleString()}` : '—'}
+              </p>
+            </div>
+          </div>
+          {(overYearly || autoNegative) && (
+            <div className="mt-2 flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <p>
+                🚨 <span className="font-semibold">Exceeding yearly budget!</span> Your plans
+                {overYearly ? ` total ${currencySymbol}${totalCommitted.toLocaleString()}, which is more than your yearly ${currencySymbol}${yearlyNum.toLocaleString()}.` : ` leave nothing for the other ${otherMonthsCount} months.`}
+                {' '}Trim a plan or raise your yearly budget.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
         {specialMonths.map(({ y, m, key }) => {
-          const has = specialOverrides[key] != null;
+          const evs = specialEvents[key] || [];
+          const has = evs.length > 0;
+          const total = specialOverrides[key] || 0;
+          const autoShown = !has && yearlyNum > 0;
           return (
             <motion.button
               key={key}
@@ -186,8 +251,13 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <div className="font-display text-foreground">{MONTH_NAMES[m]} {String(y).slice(-2)}</div>
               {has ? (
                 <>
-                  <div className="text-[10px] text-primary font-semibold mt-0.5">{currencySymbol}{specialOverrides[key].toLocaleString()}</div>
-                  {specialLabels[key] && <div className="text-[9px] text-muted-foreground truncate">{specialLabels[key]}</div>}
+                  <div className="text-[10px] text-primary font-semibold mt-0.5">{currencySymbol}{total.toLocaleString()}</div>
+                  <div className="text-[9px] text-muted-foreground truncate">{evs.length} event{evs.length > 1 ? 's' : ''}{specialLabels[key] ? ` · ${specialLabels[key]}` : ''}</div>
+                </>
+              ) : autoShown ? (
+                <>
+                  <div className="text-[10px] text-success font-semibold mt-0.5">{currencySymbol}{Math.max(0, autoPerOtherMonth).toLocaleString()}</div>
+                  <div className="text-[9px] text-muted-foreground">auto · tap to plan</div>
                 </>
               ) : (
                 <div className="text-[10px] text-muted-foreground mt-0.5">tap to add</div>
@@ -208,27 +278,55 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               })()}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">What's happening?</label>
-              <Input value={editLabel} onChange={e => setEditLabel(e.target.value)}
-                placeholder="e.g. Goa trip, Mom's birthday, anniversary"
-                className="bg-background border-border" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Budget for this month ({currencySymbol})</label>
-              <Input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)}
-                placeholder="e.g. 30000" className="bg-background border-border text-lg" autoFocus />
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={saveSpecialEdit} className="flex-1 gradient-primary text-primary-foreground border-0">Save ✨</Button>
-              {editKey && specialOverrides[editKey] != null && (
-                <Button variant="outline" onClick={() => { setEditAmount(''); setEditLabel(''); saveSpecialEdit(); }}>
-                  Remove
-                </Button>
-              )}
-            </div>
-          </div>
+          {editKey && (() => {
+            const evs = specialEvents[editKey] || [];
+            const monthTotal = evs.reduce((s, e) => s + e.amount, 0);
+            return (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Add as many events as you want — Mooney totals them for the month.
+                </p>
+
+                {evs.length > 0 && (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {evs.map(ev => (
+                      <div key={ev.id} className="flex items-center gap-2 kawaii-card bg-background py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground truncate">{ev.label || 'Untitled'}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-primary">{currencySymbol}{ev.amount.toLocaleString()}</p>
+                        <button onClick={() => removeEvent(editKey, ev.id)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex justify-between px-1 pt-1 text-xs">
+                      <span className="text-muted-foreground">Month total</span>
+                      <span className="font-display text-foreground">{currencySymbol}{monthTotal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="kawaii-card bg-secondary/20 border-secondary space-y-2">
+                  <p className="text-[11px] font-semibold text-foreground">➕ Add an event</p>
+                  <Input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                    placeholder="e.g. Goa trip, Mom's birthday"
+                    className="bg-background border-border text-sm" />
+                  <div className="flex gap-2">
+                    <Input type="number" value={newAmount} onChange={e => setNewAmount(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addEvent()}
+                      placeholder={`Amount (${currencySymbol})`}
+                      className="bg-background border-border" />
+                    <Button onClick={addEvent} className="gradient-primary text-primary-foreground border-0 shrink-0">
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+
+                <Button variant="outline" onClick={() => setEditKey(null)} className="w-full">Done ✨</Button>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </motion.div>
