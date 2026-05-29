@@ -11,10 +11,13 @@ interface Props {
   expenses: Expense[];
   defaultMonthlyBudget: number;
   overrides: Record<string, number>;
+  extras: Record<string, number>;
+  labels: Record<string, string>;
+  yearlyBudget: number;
   fyStartMonth: number;
   fyStartYear: number;
   currencySymbol: string;
-  onUpdateOverrides: (next: Record<string, number>) => void;
+  onUpdateExtras: (nextExtras: Record<string, number>, nextLabels: Record<string, string>) => void;
   onUpdateFY: (startMonth: number, startYear: number) => void;
   onUpdateDefaultMonthly: (amount: number) => void;
 }
@@ -25,11 +28,13 @@ const MONTH_EMOJI = ['❄️','💕','🌸','🌷','🌼','☀️','🏖️','�
 const keyFor = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}`;
 
 const YearlyOverview = ({
-  expenses, defaultMonthlyBudget, overrides, fyStartMonth, fyStartYear,
-  currencySymbol, onUpdateOverrides, onUpdateFY, onUpdateDefaultMonthly,
+  expenses, defaultMonthlyBudget, overrides, extras, labels, yearlyBudget,
+  fyStartMonth, fyStartYear,
+  currencySymbol, onUpdateExtras, onUpdateFY, onUpdateDefaultMonthly,
 }: Props) => {
   const [editKey, setEditKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [editLabel, setEditLabel] = useState('');
   const [fyOpen, setFyOpen] = useState(false);
   const [tmpStartMonth, setTmpStartMonth] = useState(fyStartMonth);
   const [tmpStartYear, setTmpStartYear] = useState(fyStartYear);
@@ -64,23 +69,42 @@ const YearlyOverview = ({
   const openEdit = (k: string) => {
     setEditKey(k);
     setEditValue(overrides[k] != null ? String(overrides[k]) : String(defaultMonthlyBudget || ''));
+    setEditLabel(labels[k] || '');
   };
 
   const saveEdit = () => {
     if (!editKey) return;
-    const next = { ...overrides };
     const val = parseFloat(editValue);
-    if (isNaN(val) || val < 0) delete next[editKey];
-    else next[editKey] = val;
-    onUpdateOverrides(next);
+    const baseAuto = yearlyBudget > 0 ? yearlyBudget / 12 : (defaultMonthlyBudget || 0);
+    const nextExtras = { ...extras };
+    const nextLabels = { ...labels };
+    if (isNaN(val) || val <= 0) {
+      delete nextExtras[editKey];
+      delete nextLabels[editKey];
+    } else {
+      // Treat the entered number as the TOTAL budget for that month — convert
+      // to an additive "extra" on top of the auto-monthly so the rest of the
+      // year adjusts automatically.
+      const extra = Math.max(0, Math.round(val - baseAuto));
+      if (extra > 0) {
+        nextExtras[editKey] = extra;
+        if (editLabel.trim()) nextLabels[editKey] = editLabel.trim();
+      } else {
+        delete nextExtras[editKey];
+        delete nextLabels[editKey];
+      }
+    }
+    onUpdateExtras(nextExtras, nextLabels);
     setEditKey(null);
   };
 
   const clearOverride = () => {
     if (!editKey) return;
-    const next = { ...overrides };
-    delete next[editKey];
-    onUpdateOverrides(next);
+    const nextExtras = { ...extras };
+    const nextLabels = { ...labels };
+    delete nextExtras[editKey];
+    delete nextLabels[editKey];
+    onUpdateExtras(nextExtras, nextLabels);
     setEditKey(null);
   };
 
@@ -88,8 +112,8 @@ const YearlyOverview = ({
     const val = parseFloat(defaultInput);
     if (isNaN(val) || val < 0) return;
     onUpdateDefaultMonthly(val);
-    // Clear all overrides so every month uses the new default
-    onUpdateOverrides({});
+    // Clear all extras so every month uses the new default
+    onUpdateExtras({}, {});
   };
 
   const fyLabel = `${MONTH_NAMES[fyStartMonth]} ${String(fyStartYear).slice(-2)} → ${MONTH_NAMES[fyMonths[11].m]} ${String(fyMonths[11].y).slice(-2)}`;
@@ -204,15 +228,21 @@ const YearlyOverview = ({
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Planning something special this month? Override the default budget just for {editingLabel}.
+              Planning something special this month? Enter the TOTAL budget you want for {editingLabel} — Mooney auto-adjusts the other months so your yearly stays the same. 🦆
             </p>
+            <Input
+              type="text"
+              value={editLabel}
+              onChange={e => setEditLabel(e.target.value)}
+              placeholder="What's it for? e.g. Goa trip"
+              className="bg-background border-border text-sm"
+            />
             <Input
               type="number"
               value={editValue}
               onChange={e => setEditValue(e.target.value)}
               placeholder={`Default: ${currencySymbol}${(defaultMonthlyBudget || 0).toLocaleString()}`}
               className="bg-background border-border text-lg"
-              autoFocus
             />
             <div className="flex gap-2">
               <Button onClick={saveEdit} className="flex-1 gradient-primary text-primary-foreground border-0">
