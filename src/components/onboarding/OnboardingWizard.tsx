@@ -152,12 +152,17 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
 
   // Yearly math for the specials step
   const yearlyNum = parseFloat(yearlyBudget) || 0;
-  const totalCommitted = Object.values(specialOverrides).reduce((s, v) => s + v, 0);
+  // specialOverrides above are the EXTRA amounts (per-month event totals)
+  // that get ADDED on top of the auto-monthly budget. Recompute the
+  // per-month picture so the user sees how the rest of the year adjusts.
+  const totalExtras = Object.values(specialOverrides).reduce((s, v) => s + v, 0);
   const overriddenCount = Object.keys(specialOverrides).length;
-  const remainingForOthers = yearlyNum - totalCommitted;
+  const baseAuto = yearlyNum > 0 ? Math.round(yearlyNum / 12) : 0;
   const otherMonthsCount = Math.max(0, 12 - overriddenCount);
-  const autoPerOtherMonth = otherMonthsCount > 0 ? Math.floor(remainingForOthers / otherMonthsCount) : 0;
-  const overYearly = yearlyNum > 0 && totalCommitted > yearlyNum;
+  const autoPerOtherMonth = yearlyNum > 0 && otherMonthsCount > 0
+    ? Math.floor(baseAuto - totalExtras / otherMonthsCount)
+    : baseAuto;
+  const overYearly = yearlyNum > 0 && totalExtras > yearlyNum;
   const autoNegative = yearlyNum > 0 && otherMonthsCount > 0 && autoPerOtherMonth < 0;
 
   const openSpecialEdit = (key: string) => {
@@ -210,8 +215,8 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <p className="font-display text-foreground">{currencySymbol}{yearlyNum.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Special plans</p>
-              <p className={`font-display ${overYearly ? 'text-destructive' : 'text-foreground'}`}>{currencySymbol}{totalCommitted.toLocaleString()}</p>
+              <p className="text-muted-foreground">Extra for specials</p>
+              <p className={`font-display ${overYearly ? 'text-destructive' : 'text-foreground'}`}>+{currencySymbol}{totalExtras.toLocaleString()}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Auto / other month</p>
@@ -225,7 +230,7 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <p>
                 🚨 <span className="font-semibold">Exceeding yearly budget!</span> Your plans
-                {overYearly ? ` total ${currencySymbol}${totalCommitted.toLocaleString()}, which is more than your yearly ${currencySymbol}${yearlyNum.toLocaleString()}.` : ` leave nothing for the other ${otherMonthsCount} months.`}
+                {overYearly ? ` add ${currencySymbol}${totalExtras.toLocaleString()} of extras, which is more than your yearly ${currencySymbol}${yearlyNum.toLocaleString()}.` : ` leave nothing for the other ${otherMonthsCount} months.`}
                 {' '}Trim a plan or raise your yearly budget.
               </p>
             </div>
@@ -237,7 +242,8 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
         {specialMonths.map(({ y, m, key }) => {
           const evs = specialEvents[key] || [];
           const has = evs.length > 0;
-          const total = specialOverrides[key] || 0;
+          const extra = specialOverrides[key] || 0;
+          const monthBudget = has ? Math.round(baseAuto + extra) : 0;
           const autoShown = !has && yearlyNum > 0;
           return (
             <motion.button
@@ -251,8 +257,8 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
               <div className="font-display text-foreground">{MONTH_NAMES[m]} {String(y).slice(-2)}</div>
               {has ? (
                 <>
-                  <div className="text-[10px] text-primary font-semibold mt-0.5">{currencySymbol}{total.toLocaleString()}</div>
-                  <div className="text-[9px] text-muted-foreground truncate">{evs.length} event{evs.length > 1 ? 's' : ''}{specialLabels[key] ? ` · ${specialLabels[key]}` : ''}</div>
+                  <div className="text-[10px] text-primary font-semibold mt-0.5">{currencySymbol}{monthBudget.toLocaleString()}</div>
+                  <div className="text-[9px] text-muted-foreground truncate">+{currencySymbol}{extra.toLocaleString()} · {evs.length} event{evs.length > 1 ? 's' : ''}{specialLabels[key] ? ` · ${specialLabels[key]}` : ''}</div>
                 </>
               ) : autoShown ? (
                 <>
