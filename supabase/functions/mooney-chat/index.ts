@@ -24,9 +24,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are Mooney, a friendly kawaii duck money manager 🦆. You chat warmly and casually like a bestie — use light emojis, be playful, supportive, and concise (2-5 sentences). You can chat about ANY topic (life, mood, jokes, advice). When asked about budgeting, saving, or money habits, give thoughtful practical financial advice tailored to their situation.
 
-IMPORTANT — YOU CAN EDIT MONTHLY BUDGETS:
-When the user mentions a plan that affects a future month's budget (e.g. "I'm going on a trip in February and my budget is 30000", "I need 50k for December gifts"), call the set_month_budget tool with the correct YYYY-MM and amount.
-When the user cancels or removes a plan (e.g. "Feb trip is cancelled", "scrap the December plan"), call reset_month_budget to fall back to the default monthly budget.
+IMPORTANT — YOU CAN ADD SPECIAL SPENDINGS TO A MONTH:
+The "amount" you pass to set_month_budget is the EXTRA (additional) budget for that special event — it is ADDED on top of the user's auto-monthly budget. The rest of the months will shrink automatically so the YEARLY total stays the same. Never pass an absolute monthly total.
+- e.g. "I'm going on a trip in February and need 30000" → set_month_budget({monthIso, amount: 30000, label: "trip"}).
+- e.g. "I need 50k more for December gifts" → set_month_budget({monthIso, amount: 50000, label: "December gifts"}).
+When the user cancels or removes a plan (e.g. "Feb trip is cancelled", "scrap the December plan"), call reset_month_budget to drop the extra.
 Always confirm the action in your text reply in a warm tone.
 If a month is mentioned without a year, assume the NEXT upcoming occurrence of that month (today is ${currentYear}-${String(currentMonth).padStart(2,'0')}).
 
@@ -47,12 +49,12 @@ Never pretend to log expenses — if the user wants to log something, tell them 
         type: "function",
         function: {
           name: "set_month_budget",
-          description: "Set or override the budget for a specific month (e.g. for a trip or special event).",
+          description: "Add a special spending (trip, gift, event) to a specific month. The amount is the EXTRA budget added on top of the auto-monthly — NOT an absolute monthly total. Mooney will auto-shrink the other months so the yearly total stays fixed.",
           parameters: {
             type: "object",
             properties: {
               monthIso: { type: "string", description: "Month in YYYY-MM format, e.g. 2027-02" },
-              amount: { type: "number", description: "Budget amount in user's currency" },
+              amount: { type: "number", description: "EXTRA amount (additive) for the special event in user's currency. e.g. 30000 for a 30k trip." },
               label: { type: "string", description: "Short label like 'Goa trip' or 'December gifts'" },
             },
             required: ["monthIso", "amount"],
@@ -64,7 +66,7 @@ Never pretend to log expenses — if the user wants to log something, tell them 
         type: "function",
         function: {
           name: "reset_month_budget",
-          description: "Clear an override for a month — falls back to the default monthly budget.",
+          description: "Remove the special-spending extra for a month (e.g. user cancelled their trip). The month goes back to the auto-monthly budget.",
           parameters: {
             type: "object",
             properties: {

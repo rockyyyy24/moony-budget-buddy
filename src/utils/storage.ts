@@ -31,6 +31,7 @@ const getDefaultState = (): AppState => ({
   financialYearStartYear: new Date().getFullYear(),
   monthlyBudgetOverrides: {},
   monthlyBudgetLabels: {},
+  monthlyBudgetExtras: {},
   dayLabels: {},
 });
 
