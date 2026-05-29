@@ -400,11 +400,27 @@ const Index = () => {
                 expenses={state.expenses}
                 defaultMonthlyBudget={state.budgetConfig.monthlyBudget}
                 overrides={state.monthlyBudgetOverrides || {}}
+                extras={state.monthlyBudgetExtras || {}}
+                labels={state.monthlyBudgetLabels || {}}
+                yearlyBudget={state.budgetConfig.yearlyBudget || 0}
                 fyStartMonth={state.financialYearStartMonth ?? 0}
                 fyStartYear={state.financialYearStartYear ?? new Date().getFullYear()}
                 currencySymbol={currencySymbol}
-                onUpdateOverrides={(next) => setFullState({ ...state, monthlyBudgetOverrides: next })}
-                onUpdateFY={(m, y) => setFullState({ ...state, financialYearStartMonth: m, financialYearStartYear: y })}
+                onUpdateExtras={(nextExtras, nextLabels) => {
+                  const fyM = state.financialYearStartMonth ?? 0;
+                  const fyY = state.financialYearStartYear ?? new Date().getFullYear();
+                  const { overrides } = recomputeOverrides(state.budgetConfig.yearlyBudget || 0, fyM, fyY, nextExtras);
+                  setFullState({
+                    ...state,
+                    monthlyBudgetExtras: nextExtras,
+                    monthlyBudgetOverrides: overrides,
+                    monthlyBudgetLabels: nextLabels,
+                  });
+                }}
+                onUpdateFY={(m, y) => {
+                  const { overrides } = recomputeOverrides(state.budgetConfig.yearlyBudget || 0, m, y, state.monthlyBudgetExtras || {});
+                  setFullState({ ...state, financialYearStartMonth: m, financialYearStartYear: y, monthlyBudgetOverrides: overrides });
+                }}
                 onUpdateDefaultMonthly={(amount) => updateBudgetConfig({ ...state.budgetConfig, monthlyBudget: amount })}
               />
             </motion.div>
