@@ -72,6 +72,7 @@ export interface AppState {
   financialYearStartYear?: number; // e.g. 2026 — anchor year for "March 26 → April 27"
   monthlyBudgetOverrides?: Record<string, number>; // key "YYYY-MM" → budget for that month
   monthlyBudgetLabels?: Record<string, string>; // key "YYYY-MM" → label like "Goa trip"
+  monthlyBudgetExtras?: Record<string, number>; // key "YYYY-MM" → ADDITIONAL budget on top of auto-monthly (source of truth for special spendings)
   dayLabels?: Record<string, string>; // key "YYYY-MM-DD" → free-text label for that day
 }
 
