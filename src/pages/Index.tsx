@@ -10,6 +10,7 @@ import { useBudget } from '@/hooks/useBudget';
 import { Expense, Reward, CURRENCIES } from '@/types/budget';
 import { parseExpenseText, getMoonyResponse, getFisheWarning } from '@/utils/expenseParser';
 import { resetUserData } from '@/utils/storage';
+import { recomputeOverrides } from '@/utils/budgetMath';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import CategoryCard from '@/components/dashboard/CategoryCard';
 import ChatBox from '@/components/dashboard/ChatBox';
@@ -175,12 +176,17 @@ const Index = () => {
         onComplete={(categories, monthlyBudget, dailyLimit, yearlyBudget, currency, mode, fyStartMonth, fyStartYear, specialOverrides, specialLabels) => {
           updateCategories(categories);
           updateBudgetConfig({ monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency });
+          // Wizard returns specialOverrides as ADDITIVE extras (the per-month
+          // event totals). Store them as extras and compute final overrides.
+          const nextExtras = { ...(state.monthlyBudgetExtras || {}), ...specialOverrides };
+          const { overrides } = recomputeOverrides(yearlyBudget, fyStartMonth, fyStartYear, nextExtras);
           setFullState({
             ...state, mode, categories, isOnboarded: true,
             budgetConfig: { monthlyBudget, dailyLimit, yearlyBudget, month: new Date().getMonth(), year: new Date().getFullYear(), currency },
             financialYearStartMonth: fyStartMonth,
             financialYearStartYear: fyStartYear,
-            monthlyBudgetOverrides: { ...(state.monthlyBudgetOverrides || {}), ...specialOverrides },
+            monthlyBudgetExtras: nextExtras,
+            monthlyBudgetOverrides: overrides,
             monthlyBudgetLabels: { ...(state.monthlyBudgetLabels || {}), ...specialLabels },
           });
           finishOnboarding();
@@ -224,19 +230,28 @@ const Index = () => {
     actions: Array<{ type: string; monthIso?: string; amount?: number; label?: string }>
   ) => {
     if (!actions || actions.length === 0) return;
-    const nextOverrides = { ...(state.monthlyBudgetOverrides || {}) };
+    const nextExtras = { ...(state.monthlyBudgetExtras || {}) };
     const nextLabels = { ...(state.monthlyBudgetLabels || {}) };
     for (const a of actions) {
       if (!a.monthIso) continue;
       if (a.type === 'set_month_budget' && typeof a.amount === 'number' && a.amount >= 0) {
-        nextOverrides[a.monthIso] = a.amount;
+        // Mooney sends the EXTRA amount (the special spending). Store as extra.
+        nextExtras[a.monthIso] = a.amount;
         if (a.label) nextLabels[a.monthIso] = a.label;
       } else if (a.type === 'reset_month_budget') {
-        delete nextOverrides[a.monthIso];
+        delete nextExtras[a.monthIso];
         delete nextLabels[a.monthIso];
       }
     }
-    setFullState({ ...state, monthlyBudgetOverrides: nextOverrides, monthlyBudgetLabels: nextLabels });
+    const fyM = state.financialYearStartMonth ?? 0;
+    const fyY = state.financialYearStartYear ?? new Date().getFullYear();
+    const { overrides } = recomputeOverrides(state.budgetConfig.yearlyBudget || 0, fyM, fyY, nextExtras);
+    setFullState({
+      ...state,
+      monthlyBudgetExtras: nextExtras,
+      monthlyBudgetOverrides: overrides,
+      monthlyBudgetLabels: nextLabels,
+    });
   };
 
   const setDayLabel = (dateStr: string, label: string) => {
