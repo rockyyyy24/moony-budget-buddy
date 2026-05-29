@@ -290,7 +290,7 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
             return (
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Add as many events as you want — Mooney totals them for the month.
+                  Add as many events as you want — these amounts get ADDED on top of your auto-monthly budget, and Mooney shrinks the other months to keep your yearly total the same. ✨
                 </p>
 
                 {evs.length > 0 && (
