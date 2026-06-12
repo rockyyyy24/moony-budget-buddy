@@ -30,7 +30,7 @@ const OnboardingWizard = ({ onComplete }: OnboardingWizardProps) => {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'budgeting' | 'analysis' | null>(null);
   const [currency, setCurrency] = useState('INR');
-  const [selectedCats, setSelectedCats] = useState<string[]>(['food', 'travel', 'rent', 'bills', 'groceries']);
+  const [selectedCats, setSelectedCats] = useState<string[]>(['food', 'travel', 'rent', 'bills', 'groceries','added manually']);
   const [customCatName, setCustomCatName] = useState('');
   const [customCats, setCustomCats] = useState<Omit<Category, 'monthlyLimit'>[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState('');

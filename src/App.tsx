@@ -1,3 +1,5 @@
+import { getExpenses } from "./services/expenseService";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,8 +11,13 @@ import Auth from "./pages/Auth";
 import { AuthProvider } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
+const App = () => {
+  
+useEffect(() => {
+  getExpenses().then((data) => console.log(data));
+}, []);
 
-const App = () => (
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -27,6 +34,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
