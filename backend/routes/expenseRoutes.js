@@ -1,16 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const Expense = require("../models/Expense");
 
-router.get("/", async (req, res) => {
-  const expenses = await Expense.find();
+let expenses = [];
+let nextId = 1;
+
+router.get("/", (req, res) => {
   res.json(expenses);
 });
 
-router.post("/", async (req, res) => {
-  const newExpense = new Expense(req.body);
-  await newExpense.save();
-  res.json(newExpense);
+router.post("/", (req, res) => {
+  const { title, amount, category } = req.body;
+  const expense = { id: nextId++, title, amount, category, createdAt: new Date() };
+  expenses.push(expense);
+  res.json(expense);
 });
 
 module.exports = router;
